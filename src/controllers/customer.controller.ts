@@ -4,18 +4,12 @@ import {
   Filter,
   FilterExcludingWhere,
   repository,
-  Where,
+  Where
 } from '@loopback/repository';
 import {
-  post,
-  param,
-  get,
-  getModelSchemaRef,
-  patch,
-  put,
-  del,
-  requestBody,
-  response,
+  del, get,
+  getModelSchemaRef, param, patch, post, put, requestBody,
+  response
 } from '@loopback/rest';
 import {Customer} from '../models';
 import {CustomerRepository} from '../repositories';
@@ -23,8 +17,8 @@ import {CustomerRepository} from '../repositories';
 export class CustomerController {
   constructor(
     @repository(CustomerRepository)
-    public customerRepository : CustomerRepository,
-  ) {}
+    public customerRepository: CustomerRepository,
+  ) { }
 
   @post('/customers')
   @response(200, {
@@ -58,6 +52,25 @@ export class CustomerController {
     return this.customerRepository.count(where);
   }
 
+  /*
+  We can simply include the relation in queries via find(), findOne(), and findById() methods.
+  For example, these queries return all customers with their Subscriptions:
+  
+  if you process data at the repository level:
+  customerRepo.find({include: ['subscriptions']});
+  
+  this is the same as the url:
+    GET http://localhost:3000/customers?filter[include][]=subscriptions
+  
+    This is how to structure the filter/query through the /explorer API to get an array of customers, each with an array of subscriptions:
+      {
+        "include": [
+            {
+              "relation": "subscriptions"
+            }
+        ]
+      }
+  */
   @get('/customers')
   @response(200, {
     description: 'Array of Customer model instances',
