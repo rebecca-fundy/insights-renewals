@@ -76,7 +76,7 @@ export class CustomerController {
         ]
       }
   Formatted for cut/paste:
-  {"include": [{"relation": "subscriptions"}]}
+{"include": [{"relation": "subscriptions"}]}
   */
 
   @get('/customers')
@@ -96,7 +96,8 @@ export class CustomerController {
   ): Promise<Customer[]> {
 
     const eventArray = await this.eventService.getEvents();
-    writeFile('output.txt', eventArray, () => { });
+    console.log(eventArray[0]);
+    writeFile('output.json', JSON.stringify(eventArray), () => { });
     return this.customerRepository.find(filter);
   }
 
