@@ -1,3 +1,4 @@
+import {inject} from '@loopback/context';
 import {
   Count,
   CountSchema,
@@ -11,13 +12,17 @@ import {
   getModelSchemaRef, param, patch, post, put, requestBody,
   response
 } from '@loopback/rest';
+import {writeFile} from 'fs';
 import {Customer} from '../models';
 import {CustomerRepository} from '../repositories';
+import {Event} from '../services';
+
 
 export class CustomerController {
   constructor(
     @repository(CustomerRepository)
     public customerRepository: CustomerRepository,
+    @inject('services.Event') protected eventService: Event
   ) { }
 
   @post('/customers')
@@ -55,13 +60,13 @@ export class CustomerController {
   /*
   We can simply include the relation in queries via find(), findOne(), and findById() methods.
   For example, these queries return all customers with their Subscriptions:
-  
+
   if you process data at the repository level:
   customerRepo.find({include: ['subscriptions']});
-  
+
   this is the same as the url:
     GET http://localhost:3000/customers?filter[include][]=subscriptions
-  
+
     This is how to structure the filter/query through the /explorer API to get an array of customers, each with an array of subscriptions:
       {
         "include": [
@@ -70,7 +75,10 @@ export class CustomerController {
             }
         ]
       }
+  Formatted for cut/paste:
+  {"include": [{"relation": "subscriptions"}]}
   */
+
   @get('/customers')
   @response(200, {
     description: 'Array of Customer model instances',
@@ -86,6 +94,9 @@ export class CustomerController {
   async find(
     @param.filter(Customer) filter?: Filter<Customer>,
   ): Promise<Customer[]> {
+
+    const eventArray = await this.eventService.getEvents();
+    writeFile('output.txt', eventArray, () => { });
     return this.customerRepository.find(filter);
   }
 
