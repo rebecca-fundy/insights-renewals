@@ -14,15 +14,18 @@ import {
 } from '@loopback/rest';
 import {writeFile} from 'fs';
 import {Customer} from '../models';
-import {CustomerRepository} from '../repositories';
-import {Event} from '../services';
+import {CustomerRepository, EventDbRepository} from '../repositories';
+import {Event, EventObject} from '../services';
 
 
 export class CustomerController {
   constructor(
     @repository(CustomerRepository)
     public customerRepository: CustomerRepository,
-    @inject('services.Event') protected eventService: Event
+    @repository(EventDbRepository)
+    protected eventDbRepository: EventDbRepository,
+    @inject('services.Event')
+    protected eventService: Event
   ) { }
 
   @post('/customers')
@@ -95,8 +98,25 @@ export class CustomerController {
     @param.filter(Customer) filter?: Filter<Customer>,
   ): Promise<Customer[]> {
 
+
+
     const eventArray = await this.eventService.getEvents();
-    console.log(eventArray[0]);
+    console.log(typeof eventArray);
+    console.log(typeof eventArray[0]);
+    console.log(Object.keys(eventArray[0]));
+
+
+
+    for (let i = 0; i < eventArray.length; i++) {
+      let eventItem: EventObject = eventArray[i];
+      console.log(eventItem['event']);
+      // let eventItem = JSON.parse(eventArray[i]);
+      // let eventItem = eventArray[i];
+      // let eventData = {
+      //   eventItem['event'];
+      // }
+      // this.eventDbRepository.create(eventData);
+    }
     writeFile('output.json', JSON.stringify(eventArray), () => { });
     return this.customerRepository.find(filter);
   }
