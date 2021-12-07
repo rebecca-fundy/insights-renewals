@@ -3,7 +3,24 @@ import {getService} from '@loopback/service-proxy';
 import {EventDataSource} from '../datasources';
 
 export interface EventObject {
-  'event': any
+  event: {
+    id: number,
+    key: string,
+    message: string,
+    subscription_id: number,
+    customer_id: number,
+    created_at: Date,
+    event_specific_data:
+    {
+      previous_allocation: number,
+      new_allocation: number,
+      component_id: number,
+      component_handle: string,
+      memo: string,
+      allocation_id: number
+    }
+
+  }
 }
 
 export interface Event {

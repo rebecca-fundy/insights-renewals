@@ -22,7 +22,7 @@ export class EventDb extends Entity {
   @property({
     type: 'date',
   })
-  created_at?: string;
+  created_at?: Date;
 
   @property({
     type: 'number',

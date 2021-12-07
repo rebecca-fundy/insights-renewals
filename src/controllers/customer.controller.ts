@@ -15,7 +15,7 @@ import {
 import {writeFile} from 'fs';
 import {Customer} from '../models';
 import {CustomerRepository, EventDbRepository} from '../repositories';
-import {Event, EventObject} from '../services';
+import {Event} from '../services';
 
 
 export class CustomerController {
@@ -108,14 +108,19 @@ export class CustomerController {
 
 
     for (let i = 0; i < eventArray.length; i++) {
-      let eventItem: EventObject = eventArray[i];
-      console.log(eventItem['event']);
+      let eventItem = eventArray[i].event;
+      console.log(eventItem.id);
       // let eventItem = JSON.parse(eventArray[i]);
       // let eventItem = eventArray[i];
-      // let eventData = {
-      //   eventItem['event'];
-      // }
-      // this.eventDbRepository.create(eventData);
+      let eventData = {
+        id: eventItem.id,
+        subscription_id: eventItem.subscription_id,
+        customer_id: eventItem.customer_id,
+        created_at: new Date(eventItem.created_at),
+        previous_allocation: eventItem.event_specific_data.previous_allocation,
+        new_allocation: eventItem.event_specific_data.new_allocation
+      }
+      await this.eventDbRepository.create(eventData);
     }
     writeFile('output.json', JSON.stringify(eventArray), () => { });
     return this.customerRepository.find(filter);
