@@ -1,4 +1,5 @@
 import {Entity, hasMany, model, property} from '@loopback/repository';
+import {EventDb} from './event-db.model';
 import {Subscription, SubscriptionWithRelations} from './subscription.model';
 
 @model()
@@ -8,7 +9,7 @@ export class Customer extends Entity {
     id: true,
     generated: false,
   })
-  id?: number;
+  id: number;
 
   @property({
     type: 'string',
@@ -23,10 +24,13 @@ export class Customer extends Entity {
   @property({
     type: 'date',
   })
-  created_at?: string;
+  created_at: Date;
 
   @hasMany(() => Subscription, {keyTo: 'customer_id'})
   subscriptions?: Subscription[];
+
+  @hasMany(() => EventDb, {keyTo: 'customer_id'})
+  eventDbs: EventDb[];
 
   constructor(data?: Partial<Customer>) {
     super(data);
