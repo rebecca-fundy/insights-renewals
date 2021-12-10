@@ -27,7 +27,7 @@ export interface Event {
   // this is where you define the Node.js methods that will be
   // mapped to REST/SOAP/gRPC operations as stated in the datasource
   // json file.
-  getEvents(): Promise<EventObject[]>
+  getEvents(page: number): Promise<EventObject[]>
 }
 
 export class EventProvider implements Provider<Event> {

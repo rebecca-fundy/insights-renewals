@@ -1,38 +1,67 @@
 import {inject, lifeCycleObserver, LifeCycleObserver} from '@loopback/core';
 import {juggler} from '@loopback/repository';
 
-var options = {
-  "method": "GET",
-  "port": null,
-  "path": "/events.json?date_field=created_at&filter=component_allocation_change&direction=desc&per_page=200",
-  headers: {
-    "content-type": "application/json",
-    "authorization": "Basic NG02MzRPMUVTcTQyVG9NMmdZUzJ2ckpyaXhOSnZNc1JrZHBRNEtrek5XRTo="
-  },
-  "baseURL": 'https://fundy-suite-sandbox.chargify.com',
-}
-
 const config = {
-  name: 'event',
+  name: 'restds',
   connector: 'rest',
+  baseURL: 'https://fundy-suite-sandbox.chargify.com/',
   crud: false,
   options: {
-    headers: options['headers']
+    headers: {
+      "content-type": "application/json",
+      "authorization": "Basic NG02MzRPMUVTcTQyVG9NMmdZUzJ2ckpyaXhOSnZNc1JrZHBRNEtrek5XRTo="
+    },
   },
   operations: [
     {
       template: {
-        method: options['method'],
-        url: `${options['baseURL']}${options['path']}`
+        method: 'GET',
+        url: 'https://fundy-suite-sandbox.chargify.com/events.json?date_field=created_at&filter=component_allocation_change&direction=asc&per_page=200&page={page}',
       },
-
       functions:
       {
-        getEvents: [],
+        getEvents: ['page'],
       }
-    }
-  ]
+    },
+  ],
 };
+
+
+// var options = {
+// "method": "GET",
+// "port": null,
+// "path": "/events.json?date_field=created_at&filter=component_allocation_change&direction=asc&per_page=200",
+// headers: {
+//   "content-type": "application/json",
+//   "authorization": "Basic NG02MzRPMUVTcTQyVG9NMmdZUzJ2ckpyaXhOSnZNc1JrZHBRNEtrek5XRTo="
+// },
+// "baseURL": 'https://fundy-suite-sandbox.chargify.com',
+// }
+
+// const config = {
+//   name: 'event',
+//   connector: 'rest',
+//   crud: false,
+//   options: {
+//     headers: options['headers']
+//   },
+//   operations: [
+//     {
+//       template: {
+//         method: options['method'],
+//         url: `${options['baseURL']}${options['path']}`,
+//         query: {
+//           page: '{page}'
+//         }
+//       },
+
+//       functions:
+//       {
+//         getEvents: ['page'],
+//       }
+//     }
+//   ]
+// };
 
 // Observe application's life cycle to disconnect the datasource when
 // application is stopped. This allows the application to be shut down

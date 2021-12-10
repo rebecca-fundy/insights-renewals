@@ -12,24 +12,24 @@ import {
   getModelSchemaRef, param, patch, post, put, requestBody,
   response
 } from '@loopback/rest';
-import {Customer} from '../models';
+import {Customer, CustomerEvent} from '../models';
 import {CustomerEventRepository, CustomerRepository, EventDbRepository} from '../repositories';
-import {Event} from '../services';
+import {Event, EventObject} from '../services';
 
 function addMonths(date: Date, months: number, i?: number): Date {
-  console.log('date= ' + date)
+  // console.log('date= ' + date)
   let date2 = new Date(date)
   let d = date2.getDate();
   // getDate gets day of the month (1 - 31)
   if (i == 0) {console.log('d in addMonths fcn: ' + d)}
   date2.setMonth(date2.getMonth() + +months);
   //gets month from parameter, adds months param, then calls setMonth
-  if (i == 0) {console.log('date after call to setMonth before if: ' + date2.getDate())}
+  // if (i == 0) {console.log('date after call to setMonth before if: ' + date2.getDate())}
   if (date2.getDate() != d) {
     date2.setDate(0);
   }
   //if the day of the month is not equal to the original after adding the month then reset the day of the month to the last day of the previous month.
-  if (i == 0) {console.log('date after call to setMonth after if: ' + date2.getDate())}
+  // if (i == 0) {console.log('date after call to setMonth after if: ' + date2.getDate())}
   return date2;
 }
 
@@ -115,83 +115,101 @@ export class CustomerController {
   async find(
     @param.filter(Customer) filter?: Filter<Customer>,
   ): Promise<Customer[]> {
-    /* Storing historical event data
-        const eventArray = await this.eventService.getEvents();
-        const customerArray = await this.customerRepository.find(filter);
-    
-        for (let i = 0; i < eventArray.length; i++) {
-          let eventItem = eventArray[i].event;
-          console.log(eventItem.id);
-    
-          let eventData = {
-            id: eventItem.id,
-            subscription_id: eventItem.subscription_id,
-            customer_id: eventItem.customer_id,
-            created_at: new Date(eventItem.created_at),
-            previous_allocation: eventItem.event_specific_data.previous_allocation,
-            new_allocation: eventItem.event_specific_data.new_allocation
+    /* Storing historical event data */
+    let eventArrayFetch: EventObject[] = [];
+    let j: number = 1;
+    while (j > 0) {
+      console.log(j);
+      await this.eventService.getEvents(j)
+        .then(tempArray => {
+          eventArrayFetch = eventArrayFetch.concat(tempArray);
+          return tempArray
+        })
+        .then(tempArray => {
+          console.log(`tempArray.length= ${tempArray.length}`);
+          console.log(`eventArrayFetch.length= ${eventArrayFetch.length}`);
+          if (tempArray.length < 200) {
+            j = -1
+          } else {
+            j++
           }
-        await this.eventDbRepository.create(eventData);
-        }
-        writeFile('output.json', JSON.stringify(eventArray), () => { });
-     */
+        });
+    }
+    const customerArray = await this.customerRepository.find(filter);
+    console.log(`eventArrayFetch.length = ${eventArrayFetch.length}`)
+    for (let i = 0; i < eventArrayFetch.length; i++) {
+      let eventItem = eventArrayFetch[i].event;
+      console.log(eventItem.id);
 
-    /* Setting of historical PE event data by customer
-       const eventArray = await this.eventDbRepository.find();
-       const customerArray = await this.customerRepository.find();
-       let today = new Date();
-       customerArray.forEach((customer, index) => {
-         let custCreationDate = customer.created_at
-         let threeMonths = addMonths(custCreationDate, 3, index)
-         let oneYear = addMonths(custCreationDate, 15, index)
-         let twoYears = addMonths(custCreationDate, 27, index)
-         let threeYears = addMonths(custCreationDate, 39, index)
-   
-         if (index == 0) {
-           console.log('today date: ' + today);
-           console.log('custCreationDate: ' + custCreationDate)
-           console.log('3 months from created date: ' + threeMonths);
-           console.log('It is at least 3 months from customer created: ' + (today > threeMonths));
-   
-         }
-         let data: Partial<CustomerEvent> = {
-           customer_id: customer.id,
-           customer_created: customer.created_at
-         }
-   
-         eventArray.forEach(event => {
-           if (event.customer_id == customer.id && event.new_allocation == 0) {
-             if (event.created_at <= threeMonths) {
-               data.peOffAt3 = true
-             }
-             else if (threeMonths < event.created_at && event.created_at <= oneYear) {
-               data.peOffAt15 = true
-             }
-             else if (oneYear < event.created_at && event.created_at <= twoYears) {
-               data.peOffAt27 = true
-             }
-             else if (twoYears < event.created_at && event.created_at <= threeYears) {
-               data.peOffAt39 = true
-             }
-           }
-         })
-   
-         if (today > threeMonths && data.peOffAt3 == undefined) {
-           data.peOffAt3 = false
-         }
-         if (today > oneYear && data.peOffAt15 == undefined) {
-           data.peOffAt15 = false
-         }
-         if (today > twoYears && data.peOffAt27 == undefined) {
-           data.peOffAt27 = false
-         }
-         if (today > threeYears && data.peOffAt39 == undefined) {
-           data.peOffAt39 = false
-         }
-         this.customerEventRepository.create(data);
-       });
-   
-   */
+      let eventData = {
+        id: eventItem.id,
+        subscription_id: eventItem.subscription_id,
+        customer_id: eventItem.customer_id,
+        created_at: new Date(eventItem.created_at),
+        previous_allocation: eventItem.event_specific_data.previous_allocation,
+        new_allocation: eventItem.event_specific_data.new_allocation
+      }
+      await this.eventDbRepository.create(eventData);
+    }
+    // writeFile('output.json', JSON.stringify(eventArray), () => { });
+    //  */
+
+    //Setting of historical PE event data by customer
+    const eventArray = await this.eventDbRepository.find();
+    //  const customerArray = await this.customerRepository.find();
+    let today = new Date();
+    customerArray.forEach((customer, index) => {
+      let custCreationDate = customer.created_at
+      let threeMonths = addMonths(custCreationDate, 3, index)
+      let oneYear = addMonths(custCreationDate, 15, index)
+      let twoYears = addMonths(custCreationDate, 27, index)
+      let threeYears = addMonths(custCreationDate, 39, index)
+
+      if (index == 0) {
+        console.log('today date: ' + today);
+        console.log('custCreationDate: ' + custCreationDate)
+        console.log('3 months from created date: ' + threeMonths);
+        console.log('It is at least 3 months from customer created: ' + (today > threeMonths));
+
+      }
+      let data: Partial<CustomerEvent> = {
+        customer_id: customer.id,
+        customer_created: customer.created_at
+      }
+
+      eventArray.forEach(event => {
+        if (event.customer_id == customer.id && event.new_allocation == 0) {
+          if (event.created_at <= threeMonths) {
+            data.peOffAt3 = true
+          }
+          else if (threeMonths < event.created_at && event.created_at <= oneYear) {
+            data.peOffAt15 = true
+          }
+          else if (oneYear < event.created_at && event.created_at <= twoYears) {
+            data.peOffAt27 = true
+          }
+          else if (twoYears < event.created_at && event.created_at <= threeYears) {
+            data.peOffAt39 = true
+          }
+        }
+      })
+
+      if (today > threeMonths && data.peOffAt3 == undefined) {
+        data.peOffAt3 = false
+      }
+      if (today > oneYear && data.peOffAt15 == undefined) {
+        data.peOffAt15 = false
+      }
+      if (today > twoYears && data.peOffAt27 == undefined) {
+        data.peOffAt27 = false
+      }
+      if (today > threeYears && data.peOffAt39 == undefined) {
+        data.peOffAt39 = false
+      }
+      this.customerEventRepository.create(data);
+    });
+
+
     return this.customerRepository.find(filter);
   }
 
