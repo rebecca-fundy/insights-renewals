@@ -12,12 +12,13 @@ import {
   response
 } from '@loopback/rest';
 import {CustomerEvent} from '../models';
-import {CustomerEventRepository} from '../repositories';
+import {CustomerEventRepository, DropoffTable} from '../repositories';
 
 export class CustomerEventController {
   constructor(
     @repository(CustomerEventRepository)
     public customerEventRepository: CustomerEventRepository,
+    // public dropoffTable: DropoffTable
   ) { }
 
   @post('/customer-events')
@@ -69,6 +70,53 @@ export class CustomerEventController {
   ): Promise<CustomerEvent[]> {
     return this.customerEventRepository.find(filter);
   }
+
+  //Add drop-off type (PE, month lease, year lease) to model, service, params
+  @get('/customer-events/drop-offs')
+  @response(200, {
+    description: 'Object with drop-off perentages',
+    content: {
+      'application/json': {
+        schema: {
+          // type:
+        },
+      },
+    },
+  })
+  async findDropOffs(
+    // @param.filter(CustomerEvent) filter?: Filter<CustomerEvent>,
+  ): Promise<DropoffTable> {
+    // let totalCust = (await this.count()).count
+    let threeMthDropCount = (await this.count({peOffAt3: true})).count
+    let threeMthFalseCount = (await this.count({peOffAt3: false})).count
+    let totalAt3m = threeMthFalseCount + threeMthDropCount;
+    let dropoffAt3m = threeMthDropCount / totalAt3m;
+
+    let oneYrDropCount = (await this.count({peOffAt15: true})).count
+    let oneYrFalseCount = (await this.count({peOffAt15: false})).count
+    let totalAt1yr = oneYrFalseCount + oneYrDropCount;
+    let dropoffAt1y = oneYrDropCount / totalAt1yr;
+
+    let twoYrDropCount = (await this.count({peOffAt27: true})).count
+    let twoYrFalseCount = (await this.count({peOffAt27: false})).count
+    let totalAt2yr = twoYrFalseCount + twoYrDropCount;
+    let dropoffAt2y = twoYrDropCount / totalAt2yr;
+
+    let threeYrDropCount = (await this.count({peOffAt39: true})).count
+    let threeYrFalseCount = (await this.count({peOffAt39: false})).count
+    let totalAt3yr = threeYrFalseCount + threeYrDropCount;
+    let dropoffAt3y = threeYrDropCount / totalAt3yr;
+
+    let dropOffs: DropoffTable = {dropoffAt3m, dropoffAt1y, dropoffAt2y, dropoffAt3y}
+    // let dropOffs: DropoffTable = {
+    //   dropoffAt3m: 0,
+    //   dropoffAt1y: 0,
+    //   dropoffAt2y: 0,
+    //   dropoffAt3y: 0
+    // }
+    return dropOffs;
+  }
+
 
   @patch('/customer-events')
   @response(200, {

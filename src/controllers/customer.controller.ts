@@ -12,7 +12,7 @@ import {
   getModelSchemaRef, param, patch, post, put, requestBody,
   response
 } from '@loopback/rest';
-import {Customer, CustomerEvent} from '../models';
+import {Customer} from '../models';
 import {CustomerEventRepository, CustomerRepository, EventDbRepository} from '../repositories';
 import {Event} from '../services';
 
@@ -115,96 +115,83 @@ export class CustomerController {
   async find(
     @param.filter(Customer) filter?: Filter<Customer>,
   ): Promise<Customer[]> {
-    // let filterRelation = filter?.include?.[0];
-    // console.log(filterRelation);
-    // const eventArray = await this.eventService.getEvents();
-    // const customerArray = await this.customerRepository.find(filter);
-
-    // for (let i = 0; i < eventArray.length; i++) {
-    //   let eventItem = eventArray[i].event;
-    //   console.log(eventItem.id);
-
-    //   let eventData = {
-    //     id: eventItem.id,
-    //     subscription_id: eventItem.subscription_id,
-    //     customer_id: eventItem.customer_id,
-    //     created_at: new Date(eventItem.created_at),
-    //     previous_allocation: eventItem.event_specific_data.previous_allocation,
-    //     new_allocation: eventItem.event_specific_data.new_allocation
-    //   }
-    // await this.eventDbRepository.create(eventData);
-    // }
-    // writeFile('output.json', JSON.stringify(eventArray), () => { });
-    const eventArray = await this.eventDbRepository.find();
-    const customerArray = await this.customerRepository.find();
-    let today = new Date();
-    customerArray.forEach((customer, index) => {
-      let custCreationDate = customer.created_at
-      let threeMonths = addMonths(custCreationDate, 3, index)
-      let oneYear = addMonths(custCreationDate, 15, index)
-      let twoYears = addMonths(custCreationDate, 27, index)
-      let threeYears = addMonths(custCreationDate, 39, index)
-      // let threeMonths = today;
-      // let oneYear = today;
-      // let twoYears = today;
-      // let threeYears = today;
-      if (index == 0) {
-        console.log('today date: ' + today);
-        console.log('custCreationDate: ' + custCreationDate)
-        console.log('3 months from created date: ' + threeMonths);
-        console.log('It is at least 3 months from customer created: ' + (today > threeMonths));
-        // console.log('data.peOffAt3 = ' + data.peOffAt3)
-      }
-      let data: Partial<CustomerEvent> = {
-        customer_id: customer.id,
-        customer_created: customer.created_at
-      }
-
-      eventArray.forEach(event => {
-        if (event.customer_id == customer.id && event.new_allocation == 0) {
-          if (event.created_at <= threeMonths) {
-            data.peOffAt3 = true
+    /* Storing historical event data
+        const eventArray = await this.eventService.getEvents();
+        const customerArray = await this.customerRepository.find(filter);
+    
+        for (let i = 0; i < eventArray.length; i++) {
+          let eventItem = eventArray[i].event;
+          console.log(eventItem.id);
+    
+          let eventData = {
+            id: eventItem.id,
+            subscription_id: eventItem.subscription_id,
+            customer_id: eventItem.customer_id,
+            created_at: new Date(eventItem.created_at),
+            previous_allocation: eventItem.event_specific_data.previous_allocation,
+            new_allocation: eventItem.event_specific_data.new_allocation
           }
-          else if (threeMonths < event.created_at && event.created_at <= oneYear) {
-            data.peOffAt15 = true
-          }
-          else if (oneYear < event.created_at && event.created_at <= twoYears) {
-            data.peOffAt27 = true
-          }
-          else if (twoYears < event.created_at && event.created_at <= threeYears) {
-            data.peOffAt39 = true
-          }
+        await this.eventDbRepository.create(eventData);
         }
-        // if (today > threeMonths && data.peOffAt3 == undefined) {
-        //   data.peOffAt3 = false
-        // }
-        // if (today > oneYear && data.peOffAt15 == undefined) {
-        //   data.peOffAt15 = false
-        // }
-        // if (today > twoYears && data.peOffAt27 == undefined) {
-        //   data.peOffAt27 = false
-        // }
-        // if (today > threeYears && data.peOffAt39 == undefined) {
-        //   data.peOffAt39 = false
-        // }
-      })
+        writeFile('output.json', JSON.stringify(eventArray), () => { });
+     */
 
-      if (today > threeMonths && data.peOffAt3 == undefined) {
-        data.peOffAt3 = false
-      }
-      if (today > oneYear && data.peOffAt15 == undefined) {
-        data.peOffAt15 = false
-      }
-      if (today > twoYears && data.peOffAt27 == undefined) {
-        data.peOffAt27 = false
-      }
-      if (today > threeYears && data.peOffAt39 == undefined) {
-        data.peOffAt39 = false
-      }
-      this.customerEventRepository.create(data);
-    });
-
-
+    /* Setting of historical PE event data by customer
+       const eventArray = await this.eventDbRepository.find();
+       const customerArray = await this.customerRepository.find();
+       let today = new Date();
+       customerArray.forEach((customer, index) => {
+         let custCreationDate = customer.created_at
+         let threeMonths = addMonths(custCreationDate, 3, index)
+         let oneYear = addMonths(custCreationDate, 15, index)
+         let twoYears = addMonths(custCreationDate, 27, index)
+         let threeYears = addMonths(custCreationDate, 39, index)
+   
+         if (index == 0) {
+           console.log('today date: ' + today);
+           console.log('custCreationDate: ' + custCreationDate)
+           console.log('3 months from created date: ' + threeMonths);
+           console.log('It is at least 3 months from customer created: ' + (today > threeMonths));
+   
+         }
+         let data: Partial<CustomerEvent> = {
+           customer_id: customer.id,
+           customer_created: customer.created_at
+         }
+   
+         eventArray.forEach(event => {
+           if (event.customer_id == customer.id && event.new_allocation == 0) {
+             if (event.created_at <= threeMonths) {
+               data.peOffAt3 = true
+             }
+             else if (threeMonths < event.created_at && event.created_at <= oneYear) {
+               data.peOffAt15 = true
+             }
+             else if (oneYear < event.created_at && event.created_at <= twoYears) {
+               data.peOffAt27 = true
+             }
+             else if (twoYears < event.created_at && event.created_at <= threeYears) {
+               data.peOffAt39 = true
+             }
+           }
+         })
+   
+         if (today > threeMonths && data.peOffAt3 == undefined) {
+           data.peOffAt3 = false
+         }
+         if (today > oneYear && data.peOffAt15 == undefined) {
+           data.peOffAt15 = false
+         }
+         if (today > twoYears && data.peOffAt27 == undefined) {
+           data.peOffAt27 = false
+         }
+         if (today > threeYears && data.peOffAt39 == undefined) {
+           data.peOffAt39 = false
+         }
+         this.customerEventRepository.create(data);
+       });
+   
+   */
     return this.customerRepository.find(filter);
   }
 
