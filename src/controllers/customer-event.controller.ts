@@ -14,6 +14,23 @@ import {
 import {CustomerEvent} from '../models';
 import {CustomerEventRepository, DropoffTable} from '../repositories';
 
+function addMonths(date: Date, months: number, i?: number): Date {
+  // console.log('date= ' + date)
+  let date2 = new Date(date)
+  let d = date2.getDate();
+  // getDate gets day of the month (1 - 31)
+  // if (i == 0) {console.log('d in addMonths fcn: ' + d)}
+  date2.setMonth(date2.getMonth() + +months);
+  //gets month from parameter, adds months param, then calls setMonth
+  // if (i == 0) {console.log('date after call to setMonth before if: ' + date2.getDate())}
+  if (date2.getDate() != d) {
+    date2.setDate(0);
+  }
+  //if the day of the month is not equal to the original after adding the month then reset the day of the month to the last day of the previous month.
+  // if (i == 0) {console.log('date after call to setMonth after if: ' + date2.getDate())}
+  return date2;
+}
+
 export class CustomerEventController {
   constructor(
     @repository(CustomerEventRepository)
@@ -86,6 +103,12 @@ export class CustomerEventController {
   async findDropOffs(
     // @param.filter(CustomerEvent) filter?: Filter<CustomerEvent>,
   ): Promise<DropoffTable> {
+    let today = new Date();
+    console.log('today date: ' + today);
+    console.log('today + 3m: ' + addMonths(today, -39))
+    console.log('today + 1y: ' + addMonths(today, -27));
+    console.log('today + 2y: ' + addMonths(today, -15));
+    console.log('today + 3y: ' + addMonths(today, -3));
     // let totalCust = (await this.count()).count
     let threeMthDropCount = (await this.count({peOffAt3: true})).count
     let threeMthFalseCount = (await this.count({peOffAt3: false})).count

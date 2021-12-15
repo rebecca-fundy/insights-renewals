@@ -14,7 +14,7 @@ import {
 } from '@loopback/rest';
 import {Customer, CustomerEvent} from '../models';
 import {CustomerEventRepository, CustomerRepository, EventDbRepository} from '../repositories';
-import {Event} from '../services';
+import {Event, EventObject} from '../services';
 
 function addMonths(date: Date, months: number, i?: number): Date {
   // console.log('date= ' + date)
@@ -124,48 +124,57 @@ export class CustomerController {
     @param.filter(Customer) filter?: Filter<Customer>,
   ): Promise<Customer[]> {
     /* Storing historical event data */
-    // let eventArrayFetch: EventObject[] = [];
-    // let j: number = 1;
-    // while (j > 0) {
-    //   console.log(j);
-    //   await this.eventService.getEvents(j)
-    //     .then(tempArray => {
-    //       eventArrayFetch = eventArrayFetch.concat(tempArray);
-    //       return tempArray
-    //     })
-    //     .then(tempArray => {
-    //       console.log(`tempArray.length= ${tempArray.length}`);
-    //       console.log(`eventArrayFetch.length= ${eventArrayFetch.length}`);
-    //       if (tempArray.length < 200) {
-    //         j = -1
-    //       } else {
-    //         j++
-    //       }
-    //     });
-    // }
-    // const customerArray = await this.customerRepository.find(filter);
-    // console.log(`eventArrayFetch.length = ${eventArrayFetch.length}`)
-    // for (let i = 0; i < eventArrayFetch.length; i++) {
-    //   let eventItem = eventArrayFetch[i].event;
-    //   console.log(eventItem.id);
+    let eventArrayFetch: EventObject[] = [];
+    let j: number = 1;
+    while (j > 0) {
+      console.log(j);
+      await this.eventService.getEvents(j)
+        .then(tempArray => {
+          eventArrayFetch = eventArrayFetch.concat(tempArray);
+          return tempArray
+        })
+        .then(tempArray => {
+          console.log(`tempArray.length= ${tempArray.length}`);
+          console.log(`eventArrayFetch.length= ${eventArrayFetch.length}`);
+          if (tempArray.length < 200) {
+            j = -1
+          } else {
+            j++
+          }
+        });
+    }
+    const customerArray = await this.customerRepository.find(filter);
+    console.log(`eventArrayFetch.length = ${eventArrayFetch.length}`)
+    for (let i = 0; i < eventArrayFetch.length; i++) {
+      let eventItem = eventArrayFetch[i].event;
+      console.log(eventItem.id);
 
-    //   let eventData = {
-    //     id: eventItem.id,
-    //     subscription_id: eventItem.subscription_id,
-    //     customer_id: eventItem.customer_id,
-    //     created_at: new Date(eventItem.created_at),
-    //     previous_allocation: eventItem.event_specific_data.previous_allocation,
-    //     new_allocation: eventItem.event_specific_data.new_allocation
-    //   }
-    //   await this.eventDbRepository.create(eventData);
-    // }
+      let eventData = {
+        id: eventItem.id,
+        subscription_id: eventItem.subscription_id,
+        customer_id: eventItem.customer_id,
+        created_at: new Date(eventItem.created_at),
+        previous_allocation: eventItem.event_specific_data.previous_allocation,
+        new_allocation: eventItem.event_specific_data.new_allocation
+      }
+      await this.eventDbRepository.create(eventData);
+    }
     // writeFile('output.json', JSON.stringify(eventArray), () => { });
     //  */
 
     //Setting of historical PE event data by customer
     let today = new Date();
     const eventArray = await this.eventDbRepository.find();
-    const customerArray = await this.customerRepository.find()
+    // const customerArray = await this.customerRepository.find()
+
+    // if (index == 0) {
+    console.log('today date: ' + today);
+    console.log('today + 3m: ' + addMonths(today, 3))
+    console.log('today + 1y: ' + addMonths(today, 15));
+    console.log('today + 2y: ' + addMonths(today, 27));
+    console.log('today + 3y: ' + addMonths(today, 39));
+
+    // }
 
     customerArray.forEach((customer, index) => {
       let custCreationDate = customer.created_at
@@ -180,13 +189,7 @@ export class CustomerController {
       // twoYears = addMinutes(custCreationDate, 7, index)
       // threeYears = addMinutes(custCreationDate, 8, index)
 
-      if (index == 0) {
-        console.log('today date: ' + today);
-        console.log('custCreationDate: ' + custCreationDate)
-        console.log('3 months from created date: ' + threeMonths);
-        console.log('It is at least 3 months from customer created: ' + (today > threeMonths));
 
-      }
       let data: Partial<CustomerEvent> = {
         customer_id: customer.id,
         customer_created: customer.created_at
