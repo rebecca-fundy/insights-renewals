@@ -23,11 +23,23 @@ export interface EventObject {
   }
 }
 
+export interface AllocationObject {
+  allocation: {
+    allocation_id: number,
+    subscription_id: number,
+    quantity: number,
+    previous_quantity: number,
+    timestamp: Date
+  }
+}
+
+
 export interface Event {
   // this is where you define the Node.js methods that will be
   // mapped to REST/SOAP/gRPC operations as stated in the datasource
   // json file.
-  getEvents(page: number): Promise<EventObject[]>
+  getEvents(page: number): Promise<EventObject[]>,
+  getAllocations(subId: number, compId: number): Promise<AllocationObject[]>
 }
 
 export class EventProvider implements Provider<Event> {

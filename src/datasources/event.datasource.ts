@@ -23,6 +23,17 @@ const config = {
         getEvents: ['page'],
       }
     },
+    {
+      template: {
+        method: 'GET',
+        url: 'https://fundy-suite.chargify.com/subscriptions/{subId}/components/{compId}/allocations.json',
+      },
+      functions:
+      {
+        getAllocations: ['subId', 'compId'],
+      }
+    },
+
   ],
 };
 
