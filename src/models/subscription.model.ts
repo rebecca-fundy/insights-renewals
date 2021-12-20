@@ -7,13 +7,13 @@ export class Subscription extends Entity {
     id: true,
     generated: false,
   })
-  id?: number;
+  id: number;
 
   @property({
     type: 'number',
     generated: false,
   })
-  customer_id?: number;
+  customer_id: number;
 
 
   constructor(data?: Partial<Subscription>) {

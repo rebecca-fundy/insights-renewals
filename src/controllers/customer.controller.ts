@@ -1,4 +1,3 @@
-import {inject} from '@loopback/context';
 import {
   Count,
   CountSchema,
@@ -12,17 +11,20 @@ import {
   getModelSchemaRef, param, patch, post, put, requestBody,
   response
 } from '@loopback/rest';
-import {writeFile} from 'fs';
 import {Customer} from '../models';
-import {CustomerRepository} from '../repositories';
-import {Event} from '../services';
+import {CustomerEventRepository, CustomerRepository, EventDbRepository} from '../repositories';
 
 
 export class CustomerController {
   constructor(
     @repository(CustomerRepository)
     public customerRepository: CustomerRepository,
-    @inject('services.Event') protected eventService: Event
+    @repository(EventDbRepository)
+    protected eventDbRepository: EventDbRepository,
+    @repository(CustomerEventRepository)
+    protected customerEventRepository: CustomerEventRepository,
+    // @inject('services.Event')
+    // protected eventService: Event
   ) { }
 
   @post('/customers')
@@ -36,12 +38,14 @@ export class CustomerController {
         'application/json': {
           schema: getModelSchemaRef(Customer, {
             title: 'NewCustomer',
-            exclude: ['id'],
+            // exclude: ['id'],
           }),
         },
       },
     })
-    customer: Omit<Customer, 'id'>,
+    // customer: Omit<Customer, 'id'>,
+    customer: Customer,
+
   ): Promise<Customer> {
     return this.customerRepository.create(customer);
   }
@@ -77,6 +81,7 @@ export class CustomerController {
       }
   Formatted for cut/paste:
 {"include": [{"relation": "subscriptions"}]}
+{"include": [{"relation": "eventDbs"}]}
   */
 
   @get('/customers')
@@ -94,10 +99,6 @@ export class CustomerController {
   async find(
     @param.filter(Customer) filter?: Filter<Customer>,
   ): Promise<Customer[]> {
-
-    const eventArray = await this.eventService.getEvents();
-    console.log(eventArray[0]);
-    writeFile('output.json', JSON.stringify(eventArray), () => { });
     return this.customerRepository.find(filter);
   }
 
