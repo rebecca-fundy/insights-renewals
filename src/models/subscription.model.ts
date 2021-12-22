@@ -15,6 +15,12 @@ export class Subscription extends Entity {
   })
   customer_id: number;
 
+  @property({
+    type: 'number',
+    generated: false,
+  })
+  product_id: number;
+
 
   constructor(data?: Partial<Subscription>) {
     super(data);

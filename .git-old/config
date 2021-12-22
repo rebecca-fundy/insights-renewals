@@ -1,0 +1,20 @@
+[core]
+	repositoryformatversion = 0
+	filemode = true
+	bare = false
+	logallrefupdates = true
+[user]
+	name = rebecca-fundy
+	email = rebecca@fundysoftware.com
+[remote "origin"]
+	url = git@github.com:rebecca-fundy/insights-renewals.git
+	fetch = +refs/heads/*:refs/remotes/origin/*
+[branch "master"]
+	remote = origin
+	merge = refs/heads/master
+[branch "shortenModels"]
+	remote = origin
+	merge = refs/heads/shortenModels
+[branch "eventDb"]
+	remote = origin
+	merge = refs/heads/eventDb
