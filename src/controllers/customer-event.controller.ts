@@ -103,25 +103,29 @@ export class CustomerEventController {
   async findDropOffs(
     @param.filter(CustomerEvent) filter?: Filter<CustomerEvent>,
   ): Promise<DropoffTable> {
+    //filter on product type = "non-lease", "month lease" or "year lease"
+    //Pro Enhancement filters do not apply to lease products.
+    //Need to make it more generic.
     let totalCust = (await this.find(filter));
     let signupDropCount = totalCust.filter(cust => cust.peOffAtSignup).length
-    let signupFalseCount = totalCust.filter(cust => cust.peOffAtSignup == false).length
+    let signupFalseCount = totalCust.filter(cust => cust.peOffAtSignup === false).length
     let dropoffAtSignup = signupDropCount / (signupFalseCount + signupDropCount)
 
     let threeMthDropCount = totalCust.filter(cust => cust.peOffAt3).length
-    let threeMthFalseCount = totalCust.filter(cust => cust.peOffAt3 == false).length
+    //null values indicate that the time point filter does not apply to this customer (e.g. it is less than 3 months since the customer creation date) so we need to distinguish between null values and false values.
+    let threeMthFalseCount = totalCust.filter(cust => cust.peOffAt3 === false).length
     let dropoffAt3m = threeMthDropCount / (threeMthFalseCount + threeMthDropCount);
 
     let oneYrDropCount = totalCust.filter(cust => cust.peOffAt15).length
-    let oneYrFalseCount = totalCust.filter(cust => cust.peOffAt15 == false).length
+    let oneYrFalseCount = totalCust.filter(cust => cust.peOffAt15 === false).length
     let dropoffAt1y = oneYrDropCount / (oneYrFalseCount + oneYrDropCount);
 
     let twoYrDropCount = totalCust.filter(cust => cust.peOffAt27).length
-    let twoYrFalseCount = totalCust.filter(cust => cust.peOffAt27 == false).length
+    let twoYrFalseCount = totalCust.filter(cust => cust.peOffAt27 === false).length
     let dropoffAt2y = twoYrDropCount / (twoYrFalseCount + twoYrDropCount);
 
     let threeYrDropCount = totalCust.filter(cust => cust.peOffAt39).length
-    let threeYrFalseCount = totalCust.filter(cust => cust.peOffAt39 == false).length
+    let threeYrFalseCount = totalCust.filter(cust => cust.peOffAt39 === false).length
     let dropoffAt3y = threeYrDropCount / threeYrFalseCount + threeYrDropCount;
 
     let dropOffs: DropoffTable = {dropoffAtSignup, dropoffAt3m, dropoffAt1y, dropoffAt2y, dropoffAt3y}
