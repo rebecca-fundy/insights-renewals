@@ -107,24 +107,21 @@ export class CustomerEventController {
     let signupDropCount = totalCust.filter(cust => cust.peOffAtSignup).length
     let signupFalseCount = totalCust.filter(cust => cust.peOffAtSignup == false).length
     let dropoffAtSignup = signupDropCount / (signupFalseCount + signupDropCount)
-    // let signupDropCount = (await this.count({peOffAtSignup: true})).count
-    // let signupFalseCount = (await this.count({peOffAtSignup: false})).count
-    // let dropoffAtSignup = signupDropCount / (signupFalseCount + signupDropCount)
 
-    let threeMthDropCount = (await this.count({peOffAt3: true})).count
-    let threeMthFalseCount = (await this.count({peOffAt3: false})).count
+    let threeMthDropCount = totalCust.filter(cust => cust.peOffAt3).length
+    let threeMthFalseCount = totalCust.filter(cust => cust.peOffAt3 == false).length
     let dropoffAt3m = threeMthDropCount / (threeMthFalseCount + threeMthDropCount);
 
-    let oneYrDropCount = (await this.count({peOffAt15: true})).count
-    let oneYrFalseCount = (await this.count({peOffAt15: false})).count
+    let oneYrDropCount = totalCust.filter(cust => cust.peOffAt15).length
+    let oneYrFalseCount = totalCust.filter(cust => cust.peOffAt15 == false).length
     let dropoffAt1y = oneYrDropCount / (oneYrFalseCount + oneYrDropCount);
 
-    let twoYrDropCount = (await this.count({peOffAt27: true})).count
-    let twoYrFalseCount = (await this.count({peOffAt27: false})).count
+    let twoYrDropCount = totalCust.filter(cust => cust.peOffAt27).length
+    let twoYrFalseCount = totalCust.filter(cust => cust.peOffAt27 == false).length
     let dropoffAt2y = twoYrDropCount / (twoYrFalseCount + twoYrDropCount);
 
-    let threeYrDropCount = (await this.count({peOffAt39: true})).count
-    let threeYrFalseCount = (await this.count({peOffAt39: false})).count
+    let threeYrDropCount = totalCust.filter(cust => cust.peOffAt39).length
+    let threeYrFalseCount = totalCust.filter(cust => cust.peOffAt39 == false).length
     let dropoffAt3y = threeYrDropCount / threeYrFalseCount + threeYrDropCount;
 
     let dropOffs: DropoffTable = {dropoffAtSignup, dropoffAt3m, dropoffAt1y, dropoffAt2y, dropoffAt3y}
