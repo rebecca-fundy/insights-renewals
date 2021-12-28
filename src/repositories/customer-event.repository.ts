@@ -4,8 +4,8 @@ import {DbDataSource} from '../datasources';
 import {CustomerEvent, CustomerEventRelations} from '../models';
 
 export interface DropoffTable {
-  dropoffAtSignup: number,
-  dropoffAt3m: number,
+  dropoffAtSignup?: number,
+  dropoffAt3m?: number,
   dropoffAt1y: number,
   dropoffAt2y: number,
   dropoffAt3y: number

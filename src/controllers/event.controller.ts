@@ -180,7 +180,9 @@ export class EventController {
       const customerArray = await this.customerRepository.find();
       const eventArray = await this.eventDbRepository.find({order: ["subscription_id ASC", "created_at ASC"]});
       const leaseProducts = {monthLease: 5601362, yearLease: 5081978}
-      //For each customer, set the appropriate time points
+      //For each customer, set the appropriate time points.
+      //PE allocation could happen a little bit after cust creation date, esp. in sandbox, so set signup timepoint as 1 minute past customer creation date.
+      //TO DO: add three weeks to timepoints
       customerArray.forEach((customer) => {
         let custCreationDate = new Date(customer.created_at)
         let signup = new Date(custCreationDate.setMinutes(custCreationDate.getMinutes() + 1));
@@ -189,11 +191,13 @@ export class EventController {
         let twoYears = addMonths(custCreationDate, 27)
         let threeYears = addMonths(custCreationDate, 39)
         let products = subscriptionArray.filter(subscription => subscription.customer_id === customer.id).sort()
+        console.log(`customer id: ${customer.id}`)
+        console.log(`subscription Array: ${subscriptionArray.filter(subscription => subscription.customer_id === customer.id).sort()}`)
         console.log(`product: ${JSON.stringify(products)}`);
         let productType = "non-lease"
-        if (products[products.length - 1].product_id == leaseProducts.monthLease) {
+        if (products.length != 0 && products[products.length - 1].product_id == monthLeaseProductId) {
           productType = "month lease"
-        } else if (products[products.length - 1].product_id == leaseProducts.yearLease) {
+        } else if (products.length != 0 && products[products.length - 1].product_id == yearLeaseProductId) {
           productType = "year lease"
         }
         //For testing only. Comment out when not testing
@@ -209,23 +213,26 @@ export class EventController {
           productType: productType
         }
 
-        //initialize valid timepoints. If there are no events for a valid timepoint, then PE was never turned on, so I initialize that to true and the others to false.
-        if (data.peOffAtSignup == undefined) {
-          data.peOffAtSignup = true
+        //initialize valid timepoints. If there are no events for a valid timepoint for a non-lease product, then PE was never turned on, so I initialize that to true and the others to false.
+        //If athere are no events for a valid timepoint for a lease product, then it was never canceled, so that should be false.
+        if (data.peOffAtSignup === undefined) {
+          data.peOffAtSignup = data.productType == "non-lease" ? true : false
         }
-        if (today > threeMonths && data.peOffAt3 == undefined) {
+        if (today > threeMonths && data.peOffAt3 === undefined) {
           data.peOffAt3 = false
         }
-        if (today > oneYear && data.peOffAt15 == undefined) {
+        if (today > oneYear && data.peOffAt15 === undefined) {
           data.peOffAt15 = false
         }
-        if (today > twoYears && data.peOffAt27 == undefined) {
+        if (today > twoYears && data.peOffAt27 === undefined) {
           data.peOffAt27 = false
         }
-        if (today > threeYears && data.peOffAt39 == undefined) {
+        if (today > threeYears && data.peOffAt39 === undefined) {
           data.peOffAt39 = false
         }
-        let peAlreadyOff: boolean = true
+        let peAlreadyOff: boolean = data.productType == "non-lease" ? true : false
+        console.log(`product type: ${data.productType}' peAlreadyOff: ${peAlreadyOff}`);
+
         //The event array is requested in ascending order so subsequent events for the same customer (such as upgrading and turning a component on) would happen later in time.
         eventArray.forEach(event => {
           if (event.customer_id == customer.id) {
@@ -238,7 +245,7 @@ export class EventController {
               if ((event.new_allocation == 0 || event.new_subscription_state == 'canceled') && !peAlreadyOff) {
                 data.peOffAt3 = true;
                 peAlreadyOff = true
-              } else if (event.new_allocation == 1) {
+              } else if (event.new_allocation == 1 || (data.productType != "non-lease" && event.new_subscription_state == "active")) {
                 peAlreadyOff = false
                 data.peOffAt3 = false
               }
@@ -247,7 +254,7 @@ export class EventController {
               if ((event.new_allocation == 0 || event.new_subscription_state == 'canceled') && !peAlreadyOff) {
                 data.peOffAt15 = true;
                 peAlreadyOff = true
-              } else if (event.new_allocation == 1) {
+              } else if (event.new_allocation == 1 || (data.productType != "non-lease" && event.new_subscription_state == "active")) {
                 peAlreadyOff = false
                 data.peOffAt15 = false
               }
@@ -256,7 +263,7 @@ export class EventController {
               if ((event.new_allocation == 0 || event.new_subscription_state == 'canceled') && !peAlreadyOff) {
                 data.peOffAt27 = true;
                 peAlreadyOff = true
-              } else if (event.new_allocation == 1) {
+              } else if (event.new_allocation == 1 || (data.productType != "non-lease" && event.new_subscription_state == "active")) {
                 peAlreadyOff = false
                 data.peOffAt27 = false
               }
@@ -265,21 +272,13 @@ export class EventController {
               if ((event.new_allocation == 0 || event.new_subscription_state == 'canceled') && !peAlreadyOff) {
                 data.peOffAt39 = true;
                 peAlreadyOff = true
-              } else if (event.new_allocation == 1) {
+              } else if (event.new_allocation == 1 || (data.productType != "non-lease" && event.new_subscription_state == "active")) {
                 peAlreadyOff = false
                 data.peOffAt39 = false
               }
             }
-            // if (customer.id == 31767483) {
-            //   console.log('Shaindel')
-            //   console.log(event.created_at)
-            //   console.log(event.key)
-            //   console.log(peAlreadyOff)
-            // }
           }
-
         })
-
         this.customerEventRepository.create(data);
       })
     }
