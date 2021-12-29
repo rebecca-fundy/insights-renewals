@@ -73,31 +73,43 @@ export class AllocationController {
   async find(
     @param.filter(Allocation) filter?: Filter<Allocation>,
   ): Promise<Allocation[]> {
-    try {
-      const monthLeaseProductId = 5601362;
-      const yearLeaseProductId = 5081978;
-      let subscriptionArray = await this.subscriptionRepository.find();
-      let filteredSubscriptionArray = subscriptionArray.filter(subscription => subscription.product_id != monthLeaseProductId && subscription.product_id != yearLeaseProductId);
-      const compId = 385544;
-      filteredSubscriptionArray.forEach(async subscription => {
-        const allocationArray = await this.eventService.getAllocations(subscription.id, compId);
-        allocationArray.forEach(async allocation => {
-          let allocationItem = {
-            allocation_id: allocation.allocation.allocation_id,
-            subscription_id: allocation.allocation.subscription_id,
-            component_id: allocation.allocation.component_id,
-            quantity: allocation.allocation.quantity,
-            previous_quantity: allocation.allocation.previous_quantity,
-            timestamp: allocation.allocation.timestamp,
-          }
-          await this.allocationRepository.create(allocationItem)
+    // try {
+    return this.subscriptionRepository.find()
+      .then(subscriptionArray => {
+        const monthLeaseProductId = 5601362;
+        const yearLeaseProductId = 5081978;
+        let filteredSubscriptionArray = subscriptionArray.filter(subscription => subscription.product_id != monthLeaseProductId && subscription.product_id != yearLeaseProductId);
+        filteredSubscriptionArray.forEach(async subscription => {
+          const compId = 385544;
+          await this.eventService.getAllocations(subscription.id, compId)
+            .then(allocationArray => {
+              allocationArray.forEach(allocation => {
+                let allocationItem = {
+                  allocation_id: allocation.allocation.allocation_id,
+                  subscription_id: allocation.allocation.subscription_id,
+                  component_id: allocation.allocation.component_id,
+                  quantity: allocation.allocation.quantity,
+                  previous_quantity: allocation.allocation.previous_quantity,
+                  timestamp: allocation.allocation.timestamp,
+                };
+                return this.allocationRepository.create(allocationItem);
+              });
+            });
         })
       })
-    } catch (error) {
-      console.log(error)
-    }
+      .then(() => this.allocationRepository.find(filter));
+
+
+
+
+    // return this.allocationRepository.find(filter);
+
+    // } catch (error) {
+    //   console.log(error)
+    // }
     // finally {
-    return this.allocationRepository.find(filter);
+    //   console.log('debug3')
+    //   return this.allocationRepository.find(filter);
     // }
   }
 
