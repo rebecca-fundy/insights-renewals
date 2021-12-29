@@ -13,7 +13,7 @@ export class Allocation extends Entity {
   @property({
     type: 'number',
   })
-  subscription_id?: number;
+  subscription_id: number;
 
   @property({
     type: 'number',
@@ -23,7 +23,7 @@ export class Allocation extends Entity {
   @property({
     type: 'date',
   })
-  timestamp?: Date;
+  timestamp: Date;
 
   @property({
     type: 'number',

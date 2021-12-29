@@ -95,9 +95,10 @@ export class AllocationController {
       })
     } catch (error) {
       console.log(error)
-    } finally {
-      return this.allocationRepository.find(filter);
     }
+    // finally {
+    return this.allocationRepository.find(filter);
+    // }
   }
 
   @patch('/allocations')

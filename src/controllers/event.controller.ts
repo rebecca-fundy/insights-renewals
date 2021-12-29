@@ -13,7 +13,7 @@ import {
   response
 } from '@loopback/rest';
 import {CustomerEvent, EventDb} from '../models';
-import {CustomerEventRepository, CustomerRepository, EventDbRepository, SubscriptionRepository} from '../repositories';
+import {AllocationRepository, CustomerEventRepository, CustomerRepository, EventDbRepository, SubscriptionRepository} from '../repositories';
 import {Event, EventObject} from '../services';
 
 function addMonths(date: Date, months: number): Date {
@@ -48,6 +48,8 @@ export class EventController {
     public subscriptionRepository: SubscriptionRepository,
     @repository(CustomerEventRepository)
     public customerEventRepository: CustomerEventRepository,
+    @repository(AllocationRepository)
+    public allocationRepository: AllocationRepository,
     @inject('services.Event')
     protected eventService: Event
   ) { }
@@ -124,35 +126,58 @@ export class EventController {
       const monthLeaseProductId = 5601362;
       const yearLeaseProductId = 5081978;
       let subscriptionArray = await this.subscriptionRepository.find();
-      let filteredSubscriptionArray = subscriptionArray.filter(subscription => subscription.product_id != monthLeaseProductId && subscription.product_id != yearLeaseProductId);
-      let allocationEvents = filteredSubscriptionArray
-        .forEach(async subscription => {
-          const compId = 385544;
-          const allocations = await this.eventService.getAllocations(subscription.id, compId);
-          allocations.forEach(allocation => {
-            let eventData: EventObject = {
-              event: {
-                id: allocation.allocation.allocation_id,
-                customer_id: subscription.customer_id,
-                subscription_id: subscription.id,
-                key: 'component_allocation_change',
-                created_at: allocation.allocation.timestamp,
-                event_specific_data: {
-                  allocation_id: allocation.allocation.allocation_id,
-                  component_id: compId,
-                  previous_allocation: allocation.allocation.previous_quantity,
-                  new_allocation: allocation.allocation.quantity
-                }
-              }
-            };
-            let filterId = allocation.allocation.allocation_id;
-            let existingEvent = eventArrayFetch.filter(event => event.event.event_specific_data.allocation_id == filterId);
-            if (existingEvent.length == 0) {
-              eventArrayFetch.push(eventData);
+      // let filteredSubscriptionArray = subscriptionArray.filter(subscription => subscription.product_id != monthLeaseProductId && subscription.product_id != yearLeaseProductId);
+      let allocationArray = await this.allocationRepository.find();
+      allocationArray.forEach(allocation => {
+        let eventData: EventObject = {
+          event: {
+            id: allocation.allocation_id,
+            customer_id: subscriptionArray.filter(sub => sub.id == allocation.subscription_id)[0].customer_id,
+            subscription_id: allocation.subscription_id,
+            key: 'component_allocation_change',
+            created_at: allocation.timestamp,
+            event_specific_data: {
+              allocation_id: allocation.allocation_id,
+              component_id: allocation.component_id,
+              previous_allocation: allocation.previous_quantity,
+              new_allocation: allocation.quantity
             }
-          });
+          }
+        }
+        let filterId = allocation.allocation_id;
+        let existingEvent = eventArrayFetch.filter(event => event.event.event_specific_data.allocation_id == filterId);
+        if (existingEvent.length == 0) {
+          eventArrayFetch.push(eventData);
+        }
+      })
 
-        });
+      // .forEach(async subscription => {
+      //   const compId = 385544;
+      //   const allocations = await this.eventService.getAllocations(subscription.id, compId);
+      //   allocations.forEach(allocation => {
+      //     let eventData: EventObject = {
+      //       event: {
+      //         id: allocation.allocation.allocation_id,
+      //         customer_id: subscription.customer_id,
+      //         subscription_id: subscription.id,
+      //         key: 'component_allocation_change',
+      //         created_at: allocation.allocation.timestamp,
+      //         event_specific_data: {
+      //           allocation_id: allocation.allocation.allocation_id,
+      //           component_id: compId,
+      //           previous_allocation: allocation.allocation.previous_quantity,
+      //           new_allocation: allocation.allocation.quantity
+      //         }
+      //       }
+      //     };
+      //     let filterId = allocation.allocation.allocation_id;
+      //     let existingEvent = eventArrayFetch.filter(event => event.event.event_specific_data.allocation_id == filterId);
+      //     if (existingEvent.length == 0) {
+      //       eventArrayFetch.push(eventData);
+      //     }
+      //   });
+
+      // });
       // })
       //Step 2: Store event data in eventDb repository
       for (let i = 0; i < eventArrayFetch.length; i++) {
@@ -179,7 +204,7 @@ export class EventController {
       //Grab array of customers and events; events ordered by ascending creation date.
       const customerArray = await this.customerRepository.find();
       const eventArray = await this.eventDbRepository.find({order: ["subscription_id ASC", "created_at ASC"]});
-      const leaseProducts = {monthLease: 5601362, yearLease: 5081978}
+      // const leaseProducts = {monthLease: 5601362, yearLease: 5081978}
       //For each customer, set the appropriate time points.
       //PE allocation could happen a little bit after cust creation date, esp. in sandbox, so set signup timepoint as 1 minute past customer creation date.
       //TO DO: add three weeks to timepoints
@@ -191,9 +216,9 @@ export class EventController {
         let twoYears = addMonths(custCreationDate, 27)
         let threeYears = addMonths(custCreationDate, 39)
         let products = subscriptionArray.filter(subscription => subscription.customer_id === customer.id).sort()
-        console.log(`customer id: ${customer.id}`)
-        console.log(`subscription Array: ${subscriptionArray.filter(subscription => subscription.customer_id === customer.id).sort()}`)
-        console.log(`product: ${JSON.stringify(products)}`);
+        // console.log(`customer id: ${customer.id}`)
+        // console.log(`subscription Array: ${subscriptionArray.filter(subscription => subscription.customer_id === customer.id).sort()}`)
+        // console.log(`product: ${JSON.stringify(products)}`);
         let productType = "non-lease"
         if (products.length != 0 && products[products.length - 1].product_id == monthLeaseProductId) {
           productType = "month lease"
