@@ -29,6 +29,7 @@ export interface AllocationObject {
   allocation: {
     allocation_id: number,
     subscription_id: number,
+    component_id: number,
     quantity: number,
     previous_quantity: number,
     timestamp: Date
