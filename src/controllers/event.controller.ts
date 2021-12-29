@@ -244,23 +244,23 @@ export class EventController {
         }
 
         //initialize valid timepoints. If there are no events for a valid timepoint for a non-lease product, then PE status has not changed since signup, so we initialize it with its current state.
-        //If athere are no events for a valid timepoint for a lease product, then it was never canceled, so that should be false.
-        if (data.peOffAtSignup === undefined) {
-          // data.peOffAtSignup = data.productType == "non-lease" ? currentPeStatus : false
-          data.peOffAtSignup = currentPeStatus
-        }
-        if (today > threeMonths && data.peOffAt3 === undefined) {
-          data.peOffAt3 = false
-        }
-        if (today > oneYear && data.peOffAt15 === undefined) {
-          data.peOffAt15 = false
-        }
-        if (today > twoYears && data.peOffAt27 === undefined) {
-          data.peOffAt27 = false
-        }
-        if (today > threeYears && data.peOffAt39 === undefined) {
-          data.peOffAt39 = false
-        }
+        //If there are no events for a valid timepoint for a lease product, then it was never canceled, so that should be false.
+        // if (data.peOffAtSignup === undefined) {
+        //   data.peOffAtSignup = data.productType == "non-lease" ? currentPeStatus : false
+        //   data.peOffAtSignup = currentPeStatus
+        // }
+        // if (today > threeMonths && data.peOffAt3 === undefined) {
+        //   data.peOffAt3 = false
+        // }
+        // if (today > oneYear && data.peOffAt15 === undefined) {
+        //   data.peOffAt15 = false
+        // }
+        // if (today > twoYears && data.peOffAt27 === undefined) {
+        //   data.peOffAt27 = false
+        // }
+        // if (today > threeYears && data.peOffAt39 === undefined) {
+        //   data.peOffAt39 = false
+        // }
         let peAlreadyOff: boolean = data.productType == "non-lease" ? true : false
         console.log(`product type: ${data.productType}' peAlreadyOff: ${peAlreadyOff}`);
 
@@ -310,6 +310,22 @@ export class EventController {
             }
           }
         })
+        if (data.peOffAtSignup === undefined) {
+          // data.peOffAtSignup = data.productType == "non-lease" ? currentPeStatus : false
+          data.peOffAtSignup = currentPeStatus
+        }
+        if (today > threeMonths && data.peOffAt3 === undefined) {
+          data.peOffAt3 = false
+        }
+        if (today > oneYear && data.peOffAt15 === undefined) {
+          data.peOffAt15 = false
+        }
+        if (today > twoYears && data.peOffAt27 === undefined) {
+          data.peOffAt27 = false
+        }
+        if (today > threeYears && data.peOffAt39 === undefined) {
+          data.peOffAt39 = false
+        }
         this.customerEventRepository.create(data);
       })
     }
