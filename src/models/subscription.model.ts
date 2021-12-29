@@ -22,10 +22,10 @@ export class Subscription extends Entity {
   product_id: number;
 
   @property({
-    type: 'number',
+    type: 'boolean',
     generated: false,
   })
-  peOn: number;
+  peOn: boolean;
 
   constructor(data?: Partial<Subscription>) {
     super(data);

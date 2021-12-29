@@ -127,29 +127,29 @@ export class EventController {
       const yearLeaseProductId = 5081978;
       let subscriptionArray = await this.subscriptionRepository.find();
       // let filteredSubscriptionArray = subscriptionArray.filter(subscription => subscription.product_id != monthLeaseProductId && subscription.product_id != yearLeaseProductId);
-      let allocationArray = await this.allocationRepository.find();
-      allocationArray.forEach(allocation => {
-        let eventData: EventObject = {
-          event: {
-            id: allocation.allocation_id,
-            customer_id: subscriptionArray.filter(sub => sub.id == allocation.subscription_id)[0].customer_id,
-            subscription_id: allocation.subscription_id,
-            key: 'component_allocation_change',
-            created_at: allocation.timestamp,
-            event_specific_data: {
-              allocation_id: allocation.allocation_id,
-              component_id: allocation.component_id,
-              previous_allocation: allocation.previous_quantity,
-              new_allocation: allocation.quantity
-            }
-          }
-        }
-        let filterId = allocation.allocation_id;
-        let existingEvent = eventArrayFetch.filter(event => event.event.event_specific_data.allocation_id == filterId);
-        if (existingEvent.length == 0) {
-          eventArrayFetch.push(eventData);
-        }
-      })
+      // let allocationArray = await this.allocationRepository.find();
+      // allocationArray.forEach(allocation => {
+      //   let eventData: EventObject = {
+      //     event: {
+      //       id: allocation.allocation_id,
+      //       customer_id: subscriptionArray.filter(sub => sub.id == allocation.subscription_id)[0].customer_id,
+      //       subscription_id: allocation.subscription_id,
+      //       key: 'component_allocation_change',
+      //       created_at: allocation.timestamp,
+      //       event_specific_data: {
+      //         allocation_id: allocation.allocation_id,
+      //         component_id: allocation.component_id,
+      //         previous_allocation: allocation.previous_quantity,
+      //         new_allocation: allocation.quantity
+      //       }
+      //     }
+      //   }
+      //   let filterId = allocation.allocation_id;
+      //   let existingEvent = eventArrayFetch.filter(event => event.event.event_specific_data.allocation_id == filterId);
+      //   if (existingEvent.length == 0) {
+      //     eventArrayFetch.push(eventData);
+      //   }
+      // })
 
       // .forEach(async subscription => {
       //   const compId = 385544;
@@ -219,11 +219,16 @@ export class EventController {
         // console.log(`customer id: ${customer.id}`)
         // console.log(`subscription Array: ${subscriptionArray.filter(subscription => subscription.customer_id === customer.id).sort()}`)
         // console.log(`product: ${JSON.stringify(products)}`);
-        let productType = "non-lease"
+        let productType = ""
+        let currentPeStatus: boolean = false;
+
         if (products.length != 0 && products[products.length - 1].product_id == monthLeaseProductId) {
           productType = "month lease"
         } else if (products.length != 0 && products[products.length - 1].product_id == yearLeaseProductId) {
           productType = "year lease"
+        } else if (products.length != 0) {
+          productType = "non-lease";
+          currentPeStatus = products[0].peOn
         }
         //For testing only. Comment out when not testing
         // threeMonths = addMinutes(custCreationDate, 5, index)
@@ -238,10 +243,11 @@ export class EventController {
           productType: productType
         }
 
-        //initialize valid timepoints. If there are no events for a valid timepoint for a non-lease product, then PE was never turned on, so I initialize that to true and the others to false.
+        //initialize valid timepoints. If there are no events for a valid timepoint for a non-lease product, then PE status has not changed since signup, so we initialize it with its current state.
         //If athere are no events for a valid timepoint for a lease product, then it was never canceled, so that should be false.
         if (data.peOffAtSignup === undefined) {
-          data.peOffAtSignup = data.productType == "non-lease" ? true : false
+          // data.peOffAtSignup = data.productType == "non-lease" ? currentPeStatus : false
+          data.peOffAtSignup = currentPeStatus
         }
         if (today > threeMonths && data.peOffAt3 === undefined) {
           data.peOffAt3 = false
