@@ -209,13 +209,17 @@ export class EventController {
       //PE allocation could happen a little bit after cust creation date, esp. in sandbox, so set signup timepoint as 1 minute past customer creation date.
       //TO DO: add three weeks to timepoints
       customerArray.forEach((customer) => {
-        let custCreationDate = new Date(customer.created_at)
+        let products = subscriptionArray.filter(subscription => subscription.customer_id === customer.id).sort()
+        // let custCreationDate = new Date(customer.created_at)
+        let custCreationDate = products.length == 0 ? new Date(customer.created_at) : new Date(products[0].created_at);
+        // console.log(JSON.stringify(products[0]))
+        // console.log(products[0].created_at)
+        // console.log(custCreationDate);
         let signup = new Date(custCreationDate.setMinutes(custCreationDate.getMinutes() + 1));
         let threeMonths = addMonths(custCreationDate, 3)
         let oneYear = addMonths(custCreationDate, 15)
         let twoYears = addMonths(custCreationDate, 27)
         let threeYears = addMonths(custCreationDate, 39)
-        let products = subscriptionArray.filter(subscription => subscription.customer_id === customer.id).sort()
         // console.log(`customer id: ${customer.id}`)
         // console.log(`subscription Array: ${subscriptionArray.filter(subscription => subscription.customer_id === customer.id).sort()}`)
         // console.log(`product: ${JSON.stringify(products)}`);
