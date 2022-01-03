@@ -123,19 +123,15 @@ export class CustomerEventController {
     //TO DO: add three weeks to timepoints
     customerArray.forEach((customer) => {
       let products = subscriptionArray.filter(subscription => subscription.customer_id === customer.id).sort()
-      // let custCreationDate = new Date(customer.created_at)
+      // If a customer has no subscription, set the beginning date to the customer creation date. Otherwise, set the beginning date to the creation date of their first subscription. This is more accurate, as it is not affected by the potential lag between signing up in Chargify and initiating the purchase.
       let custCreationDate = products.length == 0 ? new Date(customer.created_at) : new Date(products[0].created_at);
-      // console.log(JSON.stringify(products[0]))
-      // console.log(products[0].created_at)
-      // console.log(custCreationDate);
+
       let signup = new Date(custCreationDate.setMinutes(custCreationDate.getMinutes() + 1));
       let threeMonths = addMonths(custCreationDate, 3)
       let oneYear = addMonths(custCreationDate, 15)
       let twoYears = addMonths(custCreationDate, 27)
       let threeYears = addMonths(custCreationDate, 39)
-      // console.log(`customer id: ${customer.id}`)
-      // console.log(`subscription Array: ${subscriptionArray.filter(subscription => subscription.customer_id === customer.id).sort()}`)
-      // console.log(`product: ${JSON.stringify(products)}`);
+
       let productType = ""
       if (products.length != 0 && products[products.length - 1].product_id == monthLeaseProductId) {
         productType = "month lease"
@@ -144,11 +140,7 @@ export class CustomerEventController {
       } else if (products.length != 0) {
         productType = "non-lease"
       }
-      //For testing only. Comment out when not testing
-      // threeMonths = addMinutes(custCreationDate, 5, index)
-      // oneYear = addMinutes(custCreationDate, 6, index)
-      // twoYears = addMinutes(custCreationDate, 7, index)
-      // threeYears = addMinutes(custCreationDate, 8, index)
+
 
       //Initialize data object for creating a customer-event item for this customer
       let data: Partial<CustomerEvent> = {

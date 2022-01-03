@@ -121,12 +121,9 @@ export class EventController {
       }
       console.log(`eventArrayFetch.length before allocations = ${eventArrayFetch.length}`)
       // Step 2: Fetch allocation data, format them into events and append them to the event array
-      //Filter this subscription array according to which product we're seeking.
-      //for sandbox:
-      // const monthLeaseProductId = 5601362;
-      // const yearLeaseProductId = 5081978;
+
       let subscriptionArray = await this.subscriptionRepository.find();
-      // let filteredSubscriptionArray = subscriptionArray.filter(subscription => subscription.product_id != monthLeaseProductId && subscription.product_id != yearLeaseProductId);
+
       let allocationArray = await this.allocationRepository.find();
       allocationArray.forEach(allocation => {
         let eventData: EventObject = {
@@ -151,35 +148,7 @@ export class EventController {
         }
       })
 
-      // .forEach(async subscription => {
-      //   const compId = 385544;
-      //   const allocations = await this.eventService.getAllocations(subscription.id, compId);
-      //   allocations.forEach(allocation => {
-      //     let eventData: EventObject = {
-      //       event: {
-      //         id: allocation.allocation.allocation_id,
-      //         customer_id: subscription.customer_id,
-      //         subscription_id: subscription.id,
-      //         key: 'component_allocation_change',
-      //         created_at: allocation.allocation.timestamp,
-      //         event_specific_data: {
-      //           allocation_id: allocation.allocation.allocation_id,
-      //           component_id: compId,
-      //           previous_allocation: allocation.allocation.previous_quantity,
-      //           new_allocation: allocation.allocation.quantity
-      //         }
-      //       }
-      //     };
-      //     let filterId = allocation.allocation.allocation_id;
-      //     let existingEvent = eventArrayFetch.filter(event => event.event.event_specific_data.allocation_id == filterId);
-      //     if (existingEvent.length == 0) {
-      //       eventArrayFetch.push(eventData);
-      //     }
-      //   });
-
-      // });
-      // })
-      //Step 2: Store event data in eventDb repository
+      //Step 3: Store event data in eventDb repository
       for (let i = 0; i < eventArrayFetch.length; i++) {
         let eventItem = eventArrayFetch[i].event;
 
