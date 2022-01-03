@@ -12,7 +12,7 @@ import {
   getModelSchemaRef, param, patch, post, put, requestBody,
   response
 } from '@loopback/rest';
-import {CustomerEvent, EventDb} from '../models';
+import {EventDb} from '../models';
 import {AllocationRepository, CustomerEventRepository, CustomerRepository, EventDbRepository, SubscriptionRepository} from '../repositories';
 import {Event, EventObject} from '../services';
 
@@ -123,8 +123,8 @@ export class EventController {
       // Step 2: Fetch allocation data, format them into events and append them to the event array
       //Filter this subscription array according to which product we're seeking.
       //for sandbox:
-      const monthLeaseProductId = 5601362;
-      const yearLeaseProductId = 5081978;
+      // const monthLeaseProductId = 5601362;
+      // const yearLeaseProductId = 5081978;
       let subscriptionArray = await this.subscriptionRepository.find();
       // let filteredSubscriptionArray = subscriptionArray.filter(subscription => subscription.product_id != monthLeaseProductId && subscription.product_id != yearLeaseProductId);
       let allocationArray = await this.allocationRepository.find();
@@ -198,125 +198,6 @@ export class EventController {
         await this.eventDbRepository.create(eventData);
       }
 
-      //Setting of historical PE event data by customer
-      let today = new Date();
-
-      //Grab array of customers and events; events ordered by ascending creation date.
-      const customerArray = await this.customerRepository.find();
-      const eventArray = await this.eventDbRepository.find({order: ["subscription_id ASC", "created_at ASC"]});
-      // const leaseProducts = {monthLease: 5601362, yearLease: 5081978}
-      //For each customer, set the appropriate time points.
-      //PE allocation could happen a little bit after cust creation date, esp. in sandbox, so set signup timepoint as 1 minute past customer creation date.
-      //TO DO: add three weeks to timepoints
-      customerArray.forEach((customer) => {
-        let products = subscriptionArray.filter(subscription => subscription.customer_id === customer.id).sort()
-        // let custCreationDate = new Date(customer.created_at)
-        let custCreationDate = products.length == 0 ? new Date(customer.created_at) : new Date(products[0].created_at);
-        // console.log(JSON.stringify(products[0]))
-        // console.log(products[0].created_at)
-        // console.log(custCreationDate);
-        let signup = new Date(custCreationDate.setMinutes(custCreationDate.getMinutes() + 1));
-        let threeMonths = addMonths(custCreationDate, 3)
-        let oneYear = addMonths(custCreationDate, 15)
-        let twoYears = addMonths(custCreationDate, 27)
-        let threeYears = addMonths(custCreationDate, 39)
-        // console.log(`customer id: ${customer.id}`)
-        // console.log(`subscription Array: ${subscriptionArray.filter(subscription => subscription.customer_id === customer.id).sort()}`)
-        // console.log(`product: ${JSON.stringify(products)}`);
-        let productType = ""
-        if (products.length != 0 && products[products.length - 1].product_id == monthLeaseProductId) {
-          productType = "month lease"
-        } else if (products.length != 0 && products[products.length - 1].product_id == yearLeaseProductId) {
-          productType = "year lease"
-        } else if (products.length != 0) {
-          productType = "non-lease"
-        }
-        //For testing only. Comment out when not testing
-        // threeMonths = addMinutes(custCreationDate, 5, index)
-        // oneYear = addMinutes(custCreationDate, 6, index)
-        // twoYears = addMinutes(custCreationDate, 7, index)
-        // threeYears = addMinutes(custCreationDate, 8, index)
-
-        //Initialize data object for creating a customer-event item for this customer
-        let data: Partial<CustomerEvent> = {
-          customer_id: customer.id,
-          customer_created: customer.created_at,
-          productType: productType
-        }
-
-        //initialize valid timepoints. If there are no events for a valid timepoint for a non-lease product, then PE was never turned on, so I initialize that to true and the others to false.
-        //If athere are no events for a valid timepoint for a lease product, then it was never canceled, so that should be false.
-        if (data.peOffAtSignup === undefined) {
-          data.peOffAtSignup = data.productType == "non-lease" ? true : false
-        }
-        if (today > threeMonths && data.peOffAt3 === undefined) {
-          data.peOffAt3 = false
-        }
-        if (today > oneYear && data.peOffAt15 === undefined) {
-          data.peOffAt15 = false
-        }
-        if (today > twoYears && data.peOffAt27 === undefined) {
-          data.peOffAt27 = false
-        }
-        if (today > threeYears && data.peOffAt39 === undefined) {
-          data.peOffAt39 = false
-        }
-        let peAlreadyOff: boolean = data.productType == "non-lease" ? true : false
-        // console.log(`product type: ${data.productType}' peAlreadyOff: ${peAlreadyOff}`);
-
-        //The event array is requested in ascending order so subsequent events for the same customer (such as upgrading and turning a component on) would happen later in time.
-        eventArray.forEach(event => {
-          if (event.customer_id == customer.id) {
-            //allocation endpoint will generate a new allocation == 1 if PE activated at signup
-            if (event.created_at <= signup && event.new_allocation == 1) {
-              data.peOffAtSignup = false;
-              peAlreadyOff = false;
-            }
-            else if (event.created_at <= threeMonths) {
-              //If there's an allocation event turning PE off, or a subscription cancellation, and PE hasn't been turned off already, turn it off.
-              //Lease products are initialized to peOff = false, so a canceled subscription will change dropoff to true.
-              if ((event.new_allocation == 0 || event.new_subscription_state == 'canceled') && !peAlreadyOff) {
-                data.peOffAt3 = true;
-                peAlreadyOff = true
-                //Alternatively, if an allocation event shows PE was turned on, or a subcription state was changed to "active" then we do not regard this as a dropoff. This is for the case that a customer upgrades, the first subscription will generate a cancellation event, but the new subscription will generate an "active" event.
-                //TODO: test/analyze for upgrades where PE was never on.
-                //Test by adding condition for data.peOffAtSignup = false
-              } else if (event.new_allocation == 1 || (data.productType != "non-lease" && event.new_subscription_state == "active")) {
-                peAlreadyOff = false
-                data.peOffAt3 = false
-              }
-            }
-            else if (event.created_at <= oneYear) {
-              if ((event.new_allocation == 0 || event.new_subscription_state == 'canceled') && !peAlreadyOff) {
-                data.peOffAt15 = true;
-                peAlreadyOff = true
-              } else if (event.new_allocation == 1 || (data.productType != "non-lease" && event.new_subscription_state == "active")) {
-                peAlreadyOff = false
-                data.peOffAt15 = false
-              }
-            }
-            else if (event.created_at <= twoYears) {
-              if ((event.new_allocation == 0 || event.new_subscription_state == 'canceled') && !peAlreadyOff) {
-                data.peOffAt27 = true;
-                peAlreadyOff = true
-              } else if (event.new_allocation == 1 || (data.productType != "non-lease" && event.new_subscription_state == "active")) {
-                peAlreadyOff = false
-                data.peOffAt27 = false
-              }
-            }
-            else if (event.created_at <= threeYears) {
-              if ((event.new_allocation == 0 || event.new_subscription_state == 'canceled') && !peAlreadyOff) {
-                data.peOffAt39 = true;
-                peAlreadyOff = true
-              } else if (event.new_allocation == 1 || (data.productType != "non-lease" && event.new_subscription_state == "active")) {
-                peAlreadyOff = false
-                data.peOffAt39 = false
-              }
-            }
-          }
-        })
-        this.customerEventRepository.create(data);
-      })
     }
     catch (err) {console.log(err.message)}
     finally {
