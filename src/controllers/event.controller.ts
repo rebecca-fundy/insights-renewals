@@ -12,7 +12,7 @@ import {
   getModelSchemaRef, param, patch, post, put, requestBody,
   response
 } from '@loopback/rest';
-import {CustomerEvent, EventDb} from '../models';
+import {EventDb} from '../models';
 import {AllocationRepository, CustomerEventRepository, CustomerRepository, EventDbRepository, SubscriptionRepository} from '../repositories';
 import {Event, EventObject} from '../services';
 
@@ -121,10 +121,7 @@ export class EventController {
       }
       // console.log(`eventArrayFetch.length before allocations = ${eventArrayFetch.length}`)
       // Step 2: Fetch allocation data, format them into events and append them to the event array
-      //Filter this subscription array according to which product we're seeking.
-      //for sandbox:
-      const monthLeaseProductId = 5601362;
-      const yearLeaseProductId = 5081978;
+
       let subscriptionArray = await this.subscriptionRepository.find();
       // let filteredSubscriptionArray = subscriptionArray.filter(subscription => subscription.product_id != monthLeaseProductId && subscription.product_id != yearLeaseProductId);
       // let allocationArray = await this.allocationRepository.find();
@@ -151,35 +148,7 @@ export class EventController {
       //   }
       // })
 
-      // .forEach(async subscription => {
-      //   const compId = 385544;
-      //   const allocations = await this.eventService.getAllocations(subscription.id, compId);
-      //   allocations.forEach(allocation => {
-      //     let eventData: EventObject = {
-      //       event: {
-      //         id: allocation.allocation.allocation_id,
-      //         customer_id: subscription.customer_id,
-      //         subscription_id: subscription.id,
-      //         key: 'component_allocation_change',
-      //         created_at: allocation.allocation.timestamp,
-      //         event_specific_data: {
-      //           allocation_id: allocation.allocation.allocation_id,
-      //           component_id: compId,
-      //           previous_allocation: allocation.allocation.previous_quantity,
-      //           new_allocation: allocation.allocation.quantity
-      //         }
-      //       }
-      //     };
-      //     let filterId = allocation.allocation.allocation_id;
-      //     let existingEvent = eventArrayFetch.filter(event => event.event.event_specific_data.allocation_id == filterId);
-      //     if (existingEvent.length == 0) {
-      //       eventArrayFetch.push(eventData);
-      //     }
-      //   });
-
-      // });
-      // })
-      //Step 2: Store event data in eventDb repository
+      //Step 3: Store event data in eventDb repository
       for (let i = 0; i < eventArrayFetch.length; i++) {
         let eventItem = eventArrayFetch[i].event;
 
@@ -198,148 +167,6 @@ export class EventController {
         await this.eventDbRepository.create(eventData);
       }
 
-      //Setting of historical PE event data by customer
-      let today = new Date();
-
-      //Grab array of customers and events; events ordered by ascending creation date.
-      const customerArray = await this.customerRepository.find();
-      const eventArray = await this.eventDbRepository.find({order: ["subscription_id ASC", "created_at ASC"]});
-      // const leaseProducts = {monthLease: 5601362, yearLease: 5081978}
-      //For each customer, set the appropriate time points.
-      //PE allocation could happen a little bit after cust creation date, esp. in sandbox, so set signup timepoint as 1 minute past customer creation date.
-      //TO DO: add three weeks to timepoints
-      customerArray.forEach((customer) => {
-        let custCreationDate = new Date(customer.created_at)
-        let signup = new Date(custCreationDate.setMinutes(custCreationDate.getMinutes() + 1));
-        let threeMonths = addMonths(custCreationDate, 3)
-        let oneYear = addMonths(custCreationDate, 15)
-        let twoYears = addMonths(custCreationDate, 27)
-        let threeYears = addMonths(custCreationDate, 39)
-        let products = subscriptionArray.filter(subscription => subscription.customer_id === customer.id).sort()
-        // console.log(`customer id: ${customer.id}`)
-        // console.log(`subscription Array: ${subscriptionArray.filter(subscription => subscription.customer_id === customer.id).sort()}`)
-        // console.log(`product: ${JSON.stringify(products)}`);
-        let productType = ""
-        let currentPeStatus: boolean = false;
-
-        if (products.length != 0 && products[products.length - 1].product_id == monthLeaseProductId) {
-          productType = "month lease"
-        } else if (products.length != 0 && products[products.length - 1].product_id == yearLeaseProductId) {
-          productType = "year lease"
-        } else if (products.length != 0) {
-          productType = "non-lease";
-          currentPeStatus = products[0].peOn
-        }
-        //For testing only. Comment out when not testing
-        // threeMonths = addMinutes(custCreationDate, 5, index)
-        // oneYear = addMinutes(custCreationDate, 6, index)
-        // twoYears = addMinutes(custCreationDate, 7, index)
-        // threeYears = addMinutes(custCreationDate, 8, index)
-
-        //Initialize data object for creating a customer-event item for this customer
-        let data: Partial<CustomerEvent> = {
-          customer_id: customer.id,
-          customer_created: customer.created_at,
-          productType: productType
-        }
-
-        //initialize valid timepoints. If there are no events for a valid timepoint for a non-lease product, then PE status has not changed since signup, so we initialize it with its current state.
-        //If there are no events for a valid timepoint for a lease product, then it was never canceled, so that should be false.
-        if (data.peOffAtSignup === undefined) {
-          data.peOffAtSignup = data.productType == "non-lease" ? currentPeStatus : false
-          data.peOffAtSignup = currentPeStatus
-        }
-        if (today > threeMonths && data.peOffAt3 === undefined) {
-          data.peOffAt3 = false
-        }
-        if (today > oneYear && data.peOffAt15 === undefined) {
-          data.peOffAt15 = false
-        }
-        if (today > twoYears && data.peOffAt27 === undefined) {
-          data.peOffAt27 = false
-        }
-        if (today > threeYears && data.peOffAt39 === undefined) {
-          data.peOffAt39 = false
-        }
-        let peAlreadyOff: boolean = data.productType == "non-lease" ? true : false
-        // console.log(`product type: ${data.productType}' peAlreadyOff: ${peAlreadyOff}`);
-        // console.log('customer id: ' + customer.id);
-        // console.log(JSON.stringify(eventArray.filter(events => events.customer_id == customer.id && (events.new_allocation == 0 || events.new_allocation == 1 || events.new_subscription_state == "canceled" || events.new_subscription_state == "active"))));
-        //The event array is requested in ascending order so subsequent events for the same customer (such as upgrading and turning a component on) would happen later in time.
-        let customerEventArray = eventArray.filter(events => customer.id == events.customer_id);
-        //If no component allocation change events exist, then the initial state of PE at signup is the same as the current state. Subsequent cancelation events can still toggle it.
-        let allocationEvents = customerEventArray.filter(customerEvent => customerEvent.key == "component_allocation_change").sort();
-        if (customer.id == 31254885) {console.log(`allocation events for Priscilla: ${JSON.stringify(allocationEvents)}`)}
-        if (allocationEvents.length == 0 && data.productType == "non-lease") {
-          data.peOffAtSignup = !currentPeStatus; //If PE is currently on, then peOffAtSignup is false.
-        } else if (data.productType == "non-lease") {
-          data.peOffAtSignup = allocationEvents[0].previous_allocation == 0 ? true : false
-        }
-        if (customer.id == 31254885) {console.log(`data.peOffAtSignup for Priscilla: ${data.peOffAtSignup}`)}
-
-        customerEventArray.forEach(event => {
-          // if (event.customer_id == customer.id) {
-
-          if (event.created_at <= signup && event.new_allocation == 1) {
-            data.peOffAtSignup = false;
-            peAlreadyOff = false;
-          }
-          else if (event.created_at <= threeMonths) {
-            if ((event.new_allocation == 0 || event.new_subscription_state == 'canceled') && !peAlreadyOff) {
-              data.peOffAt3 = true;
-              peAlreadyOff = true
-            } else if (event.new_allocation == 1 || (data.productType != "non-lease" && event.new_subscription_state == "active")) {
-              peAlreadyOff = false
-              data.peOffAt3 = false
-            }
-          }
-          else if (event.created_at <= oneYear) {
-            if ((event.new_allocation == 0 || event.new_subscription_state == 'canceled') && !peAlreadyOff) {
-              data.peOffAt15 = true;
-              peAlreadyOff = true
-            } else if (event.new_allocation == 1 || (data.productType != "non-lease" && event.new_subscription_state == "active")) {
-              peAlreadyOff = false
-              data.peOffAt15 = false
-            }
-          }
-          else if (event.created_at <= twoYears) {
-            if ((event.new_allocation == 0 || event.new_subscription_state == 'canceled') && !peAlreadyOff) {
-              data.peOffAt27 = true;
-              peAlreadyOff = true
-            } else if (event.new_allocation == 1 || (data.productType != "non-lease" && event.new_subscription_state == "active")) {
-              peAlreadyOff = false
-              data.peOffAt27 = false
-            }
-          }
-          else if (event.created_at <= threeYears) {
-            if ((event.new_allocation == 0 || event.new_subscription_state == 'canceled') && !peAlreadyOff) {
-              data.peOffAt39 = true;
-              peAlreadyOff = true
-            } else if (event.new_allocation == 1 || (data.productType != "non-lease" && event.new_subscription_state == "active")) {
-              peAlreadyOff = false
-              data.peOffAt39 = false
-            }
-          }
-          // }
-        })
-        //   if (data.peOffAtSignup === undefined) {
-        //     // data.peOffAtSignup = data.productType == "non-lease" ? currentPeStatus : false
-        //     data.peOffAtSignup = currentPeStatus
-        //   }
-        //   if (today > threeMonths && data.peOffAt3 === undefined) {
-        //     data.peOffAt3 = false
-        //   }
-        //   if (today > oneYear && data.peOffAt15 === undefined) {
-        //     data.peOffAt15 = false
-        //   }
-        //   if (today > twoYears && data.peOffAt27 === undefined) {
-        //     data.peOffAt27 = false
-        //   }
-        //   if (today > threeYears && data.peOffAt39 === undefined) {
-        //     data.peOffAt39 = false
-        //   }
-        this.customerEventRepository.create(data);
-      })
     }
     catch (err) {console.log(err.message)}
     finally {

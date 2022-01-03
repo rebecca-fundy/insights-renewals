@@ -22,7 +22,13 @@ export class Subscription extends Entity {
   product_id: number;
 
   @property({
-    type: 'boolean',
+    type: 'date',
+    generated: false,
+  })
+  created_at: Date;
+
+  @property({
+    type: 'number',
     generated: false,
   })
   peOn: boolean;
