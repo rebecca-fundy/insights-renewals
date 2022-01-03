@@ -16,28 +16,6 @@ import {EventDb} from '../models';
 import {AllocationRepository, CustomerEventRepository, CustomerRepository, EventDbRepository, SubscriptionRepository} from '../repositories';
 import {Event, EventObject} from '../services';
 
-function addMonths(date: Date, months: number): Date {
-  let date2 = new Date(date)
-  // getDate gets day of the month (1 - 31)
-  let d = date2.getDate();
-
-  //gets month from parameter, adds months param, then calls setMonth
-  date2.setMonth(date2.getMonth() + +months);
-
-  //if the day of the month is not equal to the original after adding the month then reset the day of the month to the last day of the previous month.
-  if (date2.getDate() != d) {
-    date2.setDate(0);
-  }
-
-  return date2;
-}
-//Use this for testing
-function addMinutes(date: Date, minutes: number, i?: number): Date {
-  let date2 = new Date(date)
-  date2.setMinutes(date2.getMinutes() + +minutes);
-  return date2;
-}
-
 export class EventController {
   constructor(
     @repository(EventDbRepository)
@@ -85,6 +63,7 @@ export class EventController {
   ): Promise<Count> {
     return this.eventDbRepository.count(where);
   }
+
   //Using /event GET endpint to load historical events
   @get('/event-dbs')
   @response(200, {
@@ -119,10 +98,10 @@ export class EventController {
             }
           });
       }
-      // console.log(`eventArrayFetch.length before allocations = ${eventArrayFetch.length}`)
+
       // Step 2: Fetch allocation data, format them into events and append them to the event array
 
-      let subscriptionArray = await this.subscriptionRepository.find();
+      // let subscriptionArray = await this.subscriptionRepository.find();
       // let filteredSubscriptionArray = subscriptionArray.filter(subscription => subscription.product_id != monthLeaseProductId && subscription.product_id != yearLeaseProductId);
       // let allocationArray = await this.allocationRepository.find();
       // allocationArray.forEach(allocation => {

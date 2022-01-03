@@ -126,6 +126,8 @@ export class CustomerEventController {
       // If a customer has no subscription, set the beginning date to the customer creation date. Otherwise, set the beginning date to the creation date of their first subscription. This is more accurate, as it is not affected by the potential lag between signing up in Chargify and initiating the purchase.
       let custCreationDate = products.length == 0 ? new Date(customer.created_at) : new Date(products[0].created_at);
 
+      let customerEvents = eventArray.filter(event => event.customer_id == customer.id)
+
       let signup = new Date(custCreationDate.setMinutes(custCreationDate.getMinutes() + 1));
       let threeMonths = addMonths(custCreationDate, 3)
       let oneYear = addMonths(custCreationDate, 15)
@@ -149,10 +151,14 @@ export class CustomerEventController {
         productType: productType
       }
 
-      //initialize valid timepoints. If there are no events for a valid timepoint for a non-lease product, then PE was never turned on, so I initialize that to true and the others to false.
-      //If athere are no events for a valid timepoint for a lease product, then it was never canceled, so that should be false.
+      //Initialize valid timepoints. If there are no events for a valid timepoint for a non-lease product, then PE allocation is the same as the "current" subscription allocation, so I initialize that to the peOn value for the subscription model. Lease products have PE defaulted to false. Otherwise, I assume PE defaults to "off" and rely on the events to set it.
+      //If there are no events for a valid timepoint for a lease product, then it was never canceled, so that should be false.
       if (data.peOffAtSignup === undefined) {
-        data.peOffAtSignup = data.productType == "non-lease" ? true : false
+        if ((data.productType == "non-lease" || customerEvents.length == 0) && products.length != 0) {
+          data.peOffAtSignup = !products[0].peOn
+        } else {
+          data.peOffAtSignup = true
+        }
       }
       if (today > threeMonths && data.peOffAt3 === undefined) {
         data.peOffAt3 = false
@@ -166,11 +172,12 @@ export class CustomerEventController {
       if (today > threeYears && data.peOffAt39 === undefined) {
         data.peOffAt39 = false
       }
-      let peAlreadyOff: boolean = data.productType == "non-lease" ? true : false
+      // let peAlreadyOff: boolean = data.productType == "non-lease" ? true : false
+      let peAlreadyOff = data.peOffAtSignup;
       // console.log(`product type: ${data.productType}' peAlreadyOff: ${peAlreadyOff}`);
 
       //The event array is requested in ascending order so subsequent events for the same customer (such as upgrading and turning a component on) would happen later in time.
-      eventArray.forEach(event => {
+      customerEvents.forEach(event => {
         if (event.customer_id == customer.id) {
           //allocation endpoint will generate a new allocation == 1 if PE activated at signup
           if (event.created_at <= signup && event.new_allocation == 1) {
