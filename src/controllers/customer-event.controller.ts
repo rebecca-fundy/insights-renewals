@@ -198,7 +198,7 @@ export class CustomerEventController {
               //Alternatively, if an allocation event shows PE was turned on, or a subcription state was changed to "active" then we do not regard this as a dropoff. This is for the case that a customer upgrades, the first subscription will generate a cancellation event, but the new subscription will generate an "active" event.
               //TODO: test/analyze for upgrades where PE was never on.
               //Test by adding condition for data.peOffAtSignup = false
-            } else if (event.new_allocation == 1 || (data.productType != "non-lease" && event.new_subscription_state == "active")) {
+            } else if (event.new_allocation == 1 || event.new_subscription_state == "active") {
               peAlreadyOff = false
               data.peOffAt3 = false
             }
@@ -207,7 +207,7 @@ export class CustomerEventController {
             if ((event.new_allocation == 0 || event.new_subscription_state == 'canceled') && !peAlreadyOff) {
               data.peOffAt15 = true;
               peAlreadyOff = true
-            } else if (event.new_allocation == 1 || (data.productType != "non-lease" && event.new_subscription_state == "active")) {
+            } else if (event.new_allocation == 1 || event.new_subscription_state == "active") {
               peAlreadyOff = false
               data.peOffAt15 = false
             }
@@ -216,7 +216,7 @@ export class CustomerEventController {
             if ((event.new_allocation == 0 || event.new_subscription_state == 'canceled') && !peAlreadyOff) {
               data.peOffAt27 = true;
               peAlreadyOff = true
-            } else if (event.new_allocation == 1 || (data.productType != "non-lease" && event.new_subscription_state == "active")) {
+            } else if (event.new_allocation == 1 || event.new_subscription_state == "active") {
               peAlreadyOff = false
               data.peOffAt27 = false
             }
@@ -225,7 +225,7 @@ export class CustomerEventController {
             if ((event.new_allocation == 0 || event.new_subscription_state == 'canceled') && !peAlreadyOff) {
               data.peOffAt39 = true;
               peAlreadyOff = true
-            } else if (event.new_allocation == 1 || (data.productType != "non-lease" && event.new_subscription_state == "active")) {
+            } else if (event.new_allocation == 1 || event.new_subscription_state == "active") {
               peAlreadyOff = false
               data.peOffAt39 = false
             }
