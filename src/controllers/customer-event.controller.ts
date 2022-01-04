@@ -159,6 +159,8 @@ export class CustomerEventController {
         }
         else if (customerEvents.length == 0 && products.length != 0) {
           data.peOffAtSignup = !products[0].peOn
+        } else if (products.length != 0 && customerEvents.filter(events => events.previous_allocation != null).length != 0) {
+          data.peOffAtSignup = customerEvents.filter(events => events.previous_allocation != null)[0].previous_allocation == 0 ? true : false
         } else {
           data.peOffAtSignup = true
         }
