@@ -154,7 +154,7 @@ export class CustomerEventController {
       //Initialize valid timepoints. If there are no events for a valid timepoint for a non-lease product, then PE allocation is the same as the "current" subscription allocation, so I initialize that to the peOn value for the subscription model. Lease products have PE defaulted to false. Otherwise, I assume PE defaults to "off" and rely on the events to set it.
       //If there are no events for a valid timepoint for a lease product, then it was never canceled, so that should be false.
       if (data.peOffAtSignup === undefined) {
-        if ((data.productType == "non-lease" || customerEvents.length == 0) && products.length != 0) {
+        if ((data.productType !== "non-lease" || customerEvents.length == 0) && products.length != 0) {
           data.peOffAtSignup = !products[0].peOn
         } else {
           data.peOffAtSignup = true
