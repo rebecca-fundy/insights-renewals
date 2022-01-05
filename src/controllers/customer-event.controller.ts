@@ -135,14 +135,14 @@ export class CustomerEventController {
       let subscriptionArray = await this.subscriptionRepository.find();
       const eventArray = await this.eventDbRepository.find({order: ["subscription_id ASC", "created_at ASC"]});
       await this.customerRepository.find()
-        .then(customerArray => {
+        .then(async customerArray => {
           for (let i = 0; i < customerArray.length; i++) {
             console.log(i);
-
             let customer = customerArray[i]; //For each customer in the customer array...
+            let customerEvents = eventArray.filter(event => event.customer_id == customer.id) //Filter the events array to events for this customer
             let products = subscriptionArray.filter(subscription => subscription.customer_id === customer.id).sort() //Make sure they have at least one subscription
             let custCreationDate = products.length == 0 ? new Date(customer.created_at) : new Date(products[0].created_at); //Set the customer creation date to the creation date of the first subscription. This will be the date that all the timepoints will be measured from. (If no subscriptions, it will be the customer creation date.)
-            let customerEvents = eventArray.filter(event => event.customer_id == customer.id) //Filter the events array to events for this customer
+            //Initialize data object for creating a customer-event item for this customer
             //Set up the timepoints for this customer.
             //TODO: For real data, add three weeks to each timepoint.
             let signup = new Date(custCreationDate.setMinutes(custCreationDate.getMinutes() + 1));
@@ -153,8 +153,6 @@ export class CustomerEventController {
             //Set product type for this customer.
             let productType = setProductType(products);
 
-
-            //Initialize data object for creating a customer-event item for this customer
             let data: Partial<CustomerEvent> = {
               customer_id: customer.id,
               customer_created: customer.created_at,
@@ -191,6 +189,7 @@ export class CustomerEventController {
               data.peOffAt39 = false
             }
             let peAlreadyOff = data.peOffAtSignup;
+            //Loop through event array and update the valid timepoints with the event data.
             customerEvents.forEach(event => {
               if (event.created_at <= signup && event.new_allocation == 1) {
                 data.peOffAtSignup = false;
@@ -238,13 +237,9 @@ export class CustomerEventController {
                 }
               }
             })
+            await this.customerEventRepository.create(data)
 
-            return new Promise<Partial<CustomerEvent>>((resolve, reject) => {
-              resolve(data)
-            })
-              .then(data => {
-                this.customerEventRepository.create(data);
-              })
+
           }
         })
     }
