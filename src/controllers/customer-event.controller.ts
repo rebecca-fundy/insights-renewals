@@ -137,7 +137,6 @@ export class CustomerEventController {
       await this.customerRepository.find()
         .then(async customerArray => {
           for (let i = 0; i < customerArray.length; i++) {
-            console.log(i);
             let customer = customerArray[i]; //For each customer in the customer array...
             let customerEvents = eventArray.filter(event => event.customer_id == customer.id) //Filter the events array to events for this customer
             let products = subscriptionArray.filter(subscription => subscription.customer_id === customer.id).sort() //Make sure they have at least one subscription
