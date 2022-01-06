@@ -76,11 +76,11 @@ export class AllocationController {
     // try {
     return this.subscriptionRepository.find()
       .then(subscriptionArray => {
-        const monthLeaseProductId = 5601362;
-        const yearLeaseProductId = 5081978;
+        let monthLeaseProductId = process.env.CHARGIFY_ENV == "live" ? 5874530 : 5601362;
+        let yearLeaseProductId = process.env.CHARGIFY_ENV == "live" ? 5135042 : 5081978;
         let filteredSubscriptionArray = subscriptionArray.filter(subscription => subscription.product_id != monthLeaseProductId && subscription.product_id != yearLeaseProductId);
         filteredSubscriptionArray.forEach(async subscription => {
-          const compId = 385544;
+          let compId = process.env.CHARGIFY_ENV == "live" ? 333725 : 385544;
           await this.eventService.getAllocations(subscription.id, compId)
             .then(allocationArray => {
               allocationArray.forEach(allocation => {

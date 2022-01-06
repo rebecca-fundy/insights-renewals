@@ -33,8 +33,8 @@ function addMonths(date: Date, months: number, i?: number): Date {
 }
 
 function setProductType(products: (Subscription & SubscriptionRelations)[]): string {
-  const monthLeaseProductId = 5601362;
-  const yearLeaseProductId = 5081978;
+  const monthLeaseProductId = process.env.CHARGIFY_ENV == "live" ? 5874530 : 5601362;
+  const yearLeaseProductId = process.env.CHARGIFY_ENV == "live" ? 5135042 : 5081978;
   let productType = ""
   if (products.length != 0 && products[products.length - 1].product_id == monthLeaseProductId) {
     productType = "month lease"
@@ -130,8 +130,7 @@ export class CustomerEventController {
       let today = new Date();
 
       //Grab array of customers and events; events ordered by ascending creation date.
-      const monthLeaseProductId = 5601362;
-      const yearLeaseProductId = 5081978;
+
       let subscriptionArray = await this.subscriptionRepository.find();
       const eventArray = await this.eventDbRepository.find({order: ["subscription_id ASC", "created_at ASC"]});
       await this.customerRepository.find()

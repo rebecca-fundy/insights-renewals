@@ -1,22 +1,26 @@
 import {inject, lifeCycleObserver, LifeCycleObserver} from '@loopback/core';
 import {juggler} from '@loopback/repository';
+const dotenv = require('dotenv').config();
+//
+let url = process.env.CHARGIFY_ENV == "live" ? process.env.CHARGIFY_URL : process.env.SANDBOX_URL
+let apiKey = process.env.CHARGIFY_ENV == "live" ? process.env.CHARGIFY_API_KEY : process.env.SANDBOX_API_KEY
 
 const config = {
   name: 'restds',
   connector: 'rest',
-  baseURL: 'https://fundy-suite-sandbox.chargify.com/',
+  baseURL: 'https://fundy-suite.chargify.com/',
   crud: false,
   options: {
     headers: {
       "content-type": "application/json",
-      "authorization": "Basic NG02MzRPMUVTcTQyVG9NMmdZUzJ2ckpyaXhOSnZNc1JrZHBRNEtrek5XRTo="
+      "authorization": "Basic pB6n62YaBPS0Fv7EAdiYMM4pU7G1A6NFKk29wRvN0",
     },
   },
   operations: [
     {
       template: {
         method: 'GET',
-        url: 'https://fundy-suite-sandbox.chargify.com/events.json?date_field=created_at&filter=component_allocation_change,subscription_state_change&direction=asc&per_page=200&page={page}',
+        url: `https://fundy-suite.chargify.com/events.json?date_field=created_at&filter=component_allocation_change,subscription_state_change&direction=asc&per_page=200&page={page}`,
       },
       functions:
       {
