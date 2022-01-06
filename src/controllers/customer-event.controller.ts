@@ -139,6 +139,7 @@ export class CustomerEventController {
             let customer = customerArray[i]; //For each customer in the customer array...
             let customerEvents = eventArray.filter(event => event.customer_id == customer.id) //Filter the events array to events for this customer
             let products = subscriptionArray.filter(subscription => subscription.customer_id === customer.id).sort() //Make sure they have at least one subscription
+            if (customer.id == 25865396) {console.log(`products array: ${JSON.stringify(products)}`)}
             let custCreationDate = products.length == 0 ? new Date(customer.created_at) : new Date(products[0].created_at); //Set the customer creation date to the creation date of the first subscription. This will be the date that all the timepoints will be measured from. (If no subscriptions, it will be the customer creation date.)
             //Initialize data object for creating a customer-event item for this customer
             //Set up the timepoints for this customer.
@@ -165,9 +166,8 @@ export class CustomerEventController {
               if (data.productType != "non-lease") { //Lease products are turn on at signup by definition, so they will never be off at signup
                 data.peOffAtSignup = false
               }
-              else if (customerEvents.filter(events => events.previous_allocation != null).length == 0 && products.length != 0) { //No allocation events for this customer means signup allocation same as current allocation
+              else if (products.length != 0 && customerEvents.filter(events => events.subscription_id == products[0].id && events.previous_allocation != null).length == 0) { //No allocation events for this customer in their first subscription means signup allocation same as current allocation in first subscription
                 // else if (customerEvents.length == 0 && products.length != 0) { //No events for this customer means signup allocation same as current allocation
-
                 data.peOffAtSignup = !products[0].peOn
               } else if (products.length != 0 && customerEvents.filter(events => events.previous_allocation != null).length != 0) { //If there are any allocation events in the events array, we can use the previous allocation of the first one to deduce the status at signup
                 data.peOffAtSignup = customerEvents.filter(events => events.previous_allocation != null)[0].previous_allocation == 0 ? true : false
