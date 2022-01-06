@@ -139,16 +139,17 @@ export class CustomerEventController {
             let customer = customerArray[i]; //For each customer in the customer array...
             let customerEvents = eventArray.filter(event => event.customer_id == customer.id) //Filter the events array to events for this customer
             let products = subscriptionArray.filter(subscription => subscription.customer_id === customer.id).sort() //Make sure they have at least one subscription
-            if (customer.id == 25865396) {console.log(`products array: ${JSON.stringify(products)}`)}
+            if (customer.id == 25862639) {console.log(`products array: ${JSON.stringify(products)}`)}
             let custCreationDate = products.length == 0 ? new Date(customer.created_at) : new Date(products[0].created_at); //Set the customer creation date to the creation date of the first subscription. This will be the date that all the timepoints will be measured from. (If no subscriptions, it will be the customer creation date.)
             //Initialize data object for creating a customer-event item for this customer
             //Set up the timepoints for this customer.
-            //TODO: For real data, add three weeks to each timepoint.
-            let signup = new Date(custCreationDate.setMinutes(custCreationDate.getMinutes() + 1));
-            let threeMonths = addMonths(custCreationDate, 3)
-            let oneYear = addMonths(custCreationDate, 15)
-            let twoYears = addMonths(custCreationDate, 27)
-            let threeYears = addMonths(custCreationDate, 39)
+
+            let signup = new Date(custCreationDate.setDate(custCreationDate.getDate() + 1));
+            let signupPlus3wks = new Date(signup.setDate(signup.getDate() + 21));
+            let threeMonths = addMonths(signupPlus3wks, 3)
+            let oneYear = addMonths(signupPlus3wks, 15)
+            let twoYears = addMonths(signupPlus3wks, 27)
+            let threeYears = addMonths(signupPlus3wks, 39)
             //Set product type for this customer.
             let productType = setProductType(products);
 
@@ -189,51 +190,97 @@ export class CustomerEventController {
               data.peOffAt39 = false
             }
             let peAlreadyOff = data.peOffAtSignup;
+            let peStatus = data.peOffAtSignup ? "off" : "on"
             //Loop through event array and update the valid timepoints with the event data.
             customerEvents.forEach(event => {
-              if (event.created_at <= signup && event.new_allocation == 1) {
-                data.peOffAtSignup = false;
-                peAlreadyOff = false;
+              // if (event.created_at <= signupPlus3wks && event.new_allocation == 1) {
+              //   data.peOffAtSignup = false;
+              //   peAlreadyOff = false;
+              // }
+              if (event.created_at <= signup) {
+                if (event.previous_allocation == 1 && event.new_allocation == 0 && !peAlreadyOff) {
+                  data.peOffAtSignup = true;
+                  peStatus = "off";
+                  peAlreadyOff = true;
+                } else if (event.previous_allocation == 0 && event.new_allocation == 1) {
+                  data.peOffAtSignup = false;
+                  peStatus = "on"
+                  peAlreadyOff = false
+                } else if (event.new_subscription_state == "canceled" && !peAlreadyOff) {
+                  data.peOffAtSignup = true
+                  peAlreadyOff = true
+                } else if (event.new_subscription_state == "active" && peStatus == "on") {
+                  data.peOffAtSignup = false
+                  peAlreadyOff = false
+                }
+
               }
               else if (event.created_at <= threeMonths) {
-                //If there's an allocation event turning PE off, or a subscription cancellation, and PE hasn't been turned off already, turn it off.
-                //Lease products are initialized to peOff = false, so a canceled subscription will change dropoff to true.
-                if ((event.new_allocation == 0 || event.new_subscription_state == 'canceled') && !peAlreadyOff) {
+                if (event.previous_allocation == 1 && event.new_allocation == 0 && !peAlreadyOff) {
                   data.peOffAt3 = true;
-                  peAlreadyOff = true
-                  //Alternatively, if an allocation event shows PE was turned on, or a subcription state was changed to "active" then we do not regard this as a dropoff. This is for the case that a customer upgrades, the first subscription will generate a cancellation event, but the new subscription will generate an "active" event.
-                  //TODO: test/analyze for upgrades where PE was never on.
-                  //Test by adding condition for data.peOffAtSignup = false
-                } else if (event.new_allocation == 1 || event.new_subscription_state == "active") {
+                  peStatus = "off";
+                  peAlreadyOff = true;
+                } else if (event.previous_allocation == 0 && event.new_allocation == 1) {
+                  data.peOffAt3 = false;
+                  peStatus = "on"
                   peAlreadyOff = false
+                } else if (event.new_subscription_state == "canceled" && !peAlreadyOff) {
+                  data.peOffAt3 = true
+                  peAlreadyOff = true
+                } else if (event.new_subscription_state == "active" && peStatus == "on") {
                   data.peOffAt3 = false
+                  peAlreadyOff = false
                 }
               }
               else if (event.created_at <= oneYear) {
-                if ((event.new_allocation == 0 || event.new_subscription_state == 'canceled') && !peAlreadyOff) {
+                if (event.previous_allocation == 1 && event.new_allocation == 0 && !peAlreadyOff) {
                   data.peOffAt15 = true;
-                  peAlreadyOff = true
-                } else if (event.new_allocation == 1 || event.new_subscription_state == "active") {
+                  peStatus = "off";
+                  peAlreadyOff = true;
+                } else if (event.previous_allocation == 0 && event.new_allocation == 1) {
+                  data.peOffAt15 = false;
+                  peStatus = "on"
                   peAlreadyOff = false
+                } else if (event.new_subscription_state == "canceled" && !peAlreadyOff) {
+                  data.peOffAt15 = true
+                  peAlreadyOff = true
+                } else if (event.new_subscription_state == "active" && peStatus == "on") {
                   data.peOffAt15 = false
+                  peAlreadyOff = false
                 }
               }
               else if (event.created_at <= twoYears) {
-                if ((event.new_allocation == 0 || event.new_subscription_state == 'canceled') && !peAlreadyOff) {
+                if (event.previous_allocation == 1 && event.new_allocation == 0 && !peAlreadyOff) {
                   data.peOffAt27 = true;
-                  peAlreadyOff = true
-                } else if (event.new_allocation == 1 || event.new_subscription_state == "active") {
+                  peStatus = "off";
+                  peAlreadyOff = true;
+                } else if (event.previous_allocation == 0 && event.new_allocation == 1) {
+                  data.peOffAt27 = false;
+                  peStatus = "on"
                   peAlreadyOff = false
+                } else if (event.new_subscription_state == "canceled" && !peAlreadyOff) {
+                  data.peOffAt27 = true
+                  peAlreadyOff = true
+                } else if (event.new_subscription_state == "active" && peStatus == "on") {
                   data.peOffAt27 = false
+                  peAlreadyOff = false
                 }
               }
               else if (event.created_at <= threeYears) {
-                if ((event.new_allocation == 0 || event.new_subscription_state == 'canceled') && !peAlreadyOff) {
+                if (event.previous_allocation == 1 && event.new_allocation == 0 && !peAlreadyOff) {
                   data.peOffAt39 = true;
-                  peAlreadyOff = true
-                } else if (event.new_allocation == 1 || event.new_subscription_state == "active") {
+                  peStatus = "off";
+                  peAlreadyOff = true;
+                } else if (event.previous_allocation == 0 && event.new_allocation == 1) {
+                  data.peOffAt39 = false;
+                  peStatus = "on"
                   peAlreadyOff = false
+                } else if (event.new_subscription_state == "canceled" && !peAlreadyOff) {
+                  data.peOffAt39 = true
+                  peAlreadyOff = true
+                } else if (event.new_subscription_state == "active" && peStatus == "on") {
                   data.peOffAt39 = false
+                  peAlreadyOff = false
                 }
               }
             })
