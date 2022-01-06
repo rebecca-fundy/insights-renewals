@@ -13,7 +13,7 @@ const config = {
   options: {
     headers: {
       "content-type": "application/json",
-      "authorization": "Basic pB6n62YaBPS0Fv7EAdiYMM4pU7G1A6NFKk29wRvN0",
+      "authorization": "Basic cEI2bjYyWWFCUFMwRnY3RUFkaVlNTTRwVTdHMUE2TkZLazI5d1J2TjA6eA==",
     },
   },
   operations: [
