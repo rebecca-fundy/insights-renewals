@@ -198,7 +198,7 @@ export class CustomerEventController {
                   data.peOffAtSignup = true;
                   peStatus = "off";
                   peAlreadyOff = true;
-                } else if (event.previous_allocation == 0 && event.new_allocation == 1) {
+                } else if (event.previous_allocation == 0 && event.new_allocation == 1) {//Chargify generates this type of allocation event when a customer upgrades with PE on.
                   data.peOffAtSignup = false;
                   peStatus = "on"
                   peAlreadyOff = false
