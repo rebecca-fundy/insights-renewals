@@ -139,13 +139,12 @@ export class CustomerEventController {
             let customer = customerArray[i]; //For each customer in the customer array...
             let customerEvents = eventArray.filter(event => event.customer_id == customer.id) //Filter the events array to events for this customer
             let products = subscriptionArray.filter(subscription => subscription.customer_id === customer.id).sort() //Make sure they have at least one subscription
-            if (customer.id == 25862639) {console.log(`products array: ${JSON.stringify(products)}`)}
-            let custCreationDate = products.length == 0 ? new Date(customer.created_at) : new Date(products[0].created_at); //Set the customer creation date to the creation date of the first subscription. This will be the date that all the timepoints will be measured from. (If no subscriptions, it will be the customer creation date.)
+            const custCreationDate = products.length == 0 ? new Date(customer.created_at) : new Date(products[0].created_at); //Set the customer creation date to the creation date of the first subscription. This will be the date that all the timepoints will be measured from. (If no subscriptions, it will be the customer creation date.)
             //Initialize data object for creating a customer-event item for this customer
             //Set up the timepoints for this customer.
-
-            let signup = new Date(custCreationDate.setDate(custCreationDate.getDate() + 1));
-            let signupPlus3wks = new Date(signup.setDate(signup.getDate() + 21));
+            let signupDate = new Date(custCreationDate);
+            let signup = new Date(signupDate.setDate(signupDate.getDate() + 1));
+            let signupPlus3wks = new Date(signupDate.setDate(signupDate.getDate() + 20)); //Already added one day for signup
             let threeMonths = addMonths(signupPlus3wks, 3)
             let oneYear = addMonths(signupPlus3wks, 15)
             let twoYears = addMonths(signupPlus3wks, 27)
@@ -168,7 +167,6 @@ export class CustomerEventController {
                 data.peOffAtSignup = false
               }
               else if (products.length != 0 && customerEvents.filter(events => events.subscription_id == products[0].id && events.previous_allocation != null).length == 0) { //No allocation events for this customer in their first subscription means signup allocation same as current allocation in first subscription
-                // else if (customerEvents.length == 0 && products.length != 0) { //No events for this customer means signup allocation same as current allocation
                 data.peOffAtSignup = !products[0].peOn
               } else if (products.length != 0 && customerEvents.filter(events => events.previous_allocation != null).length != 0) { //If there are any allocation events in the events array, we can use the previous allocation of the first one to deduce the status at signup
                 data.peOffAtSignup = customerEvents.filter(events => events.previous_allocation != null)[0].previous_allocation == 0 ? true : false
@@ -192,11 +190,9 @@ export class CustomerEventController {
             let peAlreadyOff = data.peOffAtSignup;
             let peStatus = data.peOffAtSignup ? "off" : "on"
             //Loop through event array and update the valid timepoints with the event data.
+
             customerEvents.forEach(event => {
-              // if (event.created_at <= signupPlus3wks && event.new_allocation == 1) {
-              //   data.peOffAtSignup = false;
-              //   peAlreadyOff = false;
-              // }
+
               if (event.created_at <= signup) {
                 if (event.previous_allocation == 1 && event.new_allocation == 0 && !peAlreadyOff) {
                   data.peOffAtSignup = true;
@@ -209,7 +205,7 @@ export class CustomerEventController {
                 } else if (event.new_subscription_state == "canceled" && !peAlreadyOff) {
                   data.peOffAtSignup = true
                   peAlreadyOff = true
-                } else if (event.new_subscription_state == "active" && peStatus == "on") {
+                } else if (event.new_subscription_state == "active" && (peStatus == "on" || (data.productType !== "non-lease"))) {
                   data.peOffAtSignup = false
                   peAlreadyOff = false
                 }
@@ -227,7 +223,7 @@ export class CustomerEventController {
                 } else if (event.new_subscription_state == "canceled" && !peAlreadyOff) {
                   data.peOffAt3 = true
                   peAlreadyOff = true
-                } else if (event.new_subscription_state == "active" && peStatus == "on") {
+                } else if (event.new_subscription_state == "active" && (peStatus == "on" || (data.productType !== "non-lease"))) {
                   data.peOffAt3 = false
                   peAlreadyOff = false
                 }
@@ -244,7 +240,7 @@ export class CustomerEventController {
                 } else if (event.new_subscription_state == "canceled" && !peAlreadyOff) {
                   data.peOffAt15 = true
                   peAlreadyOff = true
-                } else if (event.new_subscription_state == "active" && peStatus == "on") {
+                } else if (event.new_subscription_state == "active" && (peStatus == "on" || (data.productType !== "non-lease"))) {
                   data.peOffAt15 = false
                   peAlreadyOff = false
                 }
@@ -261,7 +257,7 @@ export class CustomerEventController {
                 } else if (event.new_subscription_state == "canceled" && !peAlreadyOff) {
                   data.peOffAt27 = true
                   peAlreadyOff = true
-                } else if (event.new_subscription_state == "active" && peStatus == "on") {
+                } else if (event.new_subscription_state == "active" && (peStatus == "on" || (data.productType !== "non-lease"))) {
                   data.peOffAt27 = false
                   peAlreadyOff = false
                 }
@@ -278,7 +274,7 @@ export class CustomerEventController {
                 } else if (event.new_subscription_state == "canceled" && !peAlreadyOff) {
                   data.peOffAt39 = true
                   peAlreadyOff = true
-                } else if (event.new_subscription_state == "active" && peStatus == "on") {
+                } else if (event.new_subscription_state == "active" && (peStatus == "on" || (data.productType !== "non-lease"))) {
                   data.peOffAt39 = false
                   peAlreadyOff = false
                 }
