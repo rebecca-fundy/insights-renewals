@@ -109,7 +109,7 @@ export class CustomerEventController {
     return this.customerEventRepository.find(filter);
   }
 
-  //Add drop-off type (PE, month lease, year lease) to model, service, params
+
   @get('/customer-events/drop-offs')
   @response(200, {
     description: 'Object with drop-off perentages',
@@ -281,8 +281,6 @@ export class CustomerEventController {
               }
             })
             await this.customerEventRepository.create(data)
-
-
           }
         })
     }
@@ -293,7 +291,6 @@ export class CustomerEventController {
     let signupDropCount = totalCust.filter(cust => cust.peOffAtSignup).length
     let signupFalseCount = totalCust.filter(cust => cust.peOffAtSignup === false).length
     let dropoffAtSignup = signupDropCount / (signupFalseCount + signupDropCount)
-
     let threeMthDropCount = totalCust.filter(cust => cust.peOffAt3).length
     //null values indicate that the time point filter does not apply to this customer (e.g. it is less than 3 months since the customer creation date) so we need to distinguish between null values and false values.
     let threeMthFalseCount = totalCust.filter(cust => cust.peOffAt3 === false).length
