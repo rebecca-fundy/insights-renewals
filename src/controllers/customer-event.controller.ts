@@ -32,6 +32,40 @@ function addMonths(date: Date, months: number, i?: number): Date {
   return date2;
 }
 
+type TimeKey = keyof CustomerEvent;
+
+function getTimepointKey(timePoint: string): TimeKey {
+  let timePointKey: TimeKey
+  switch (timePoint) {
+    case "signup": {
+      timePointKey = 'peOffAtSignup'
+      break;
+    }
+    case "threeMonths": {
+      timePointKey = 'peOffAt3'
+      break;
+    }
+    case "oneYear": {
+      timePointKey = 'peOffAt15'
+      break;
+    }
+    case "twoYears": {
+      timePointKey = 'peOffAt27'
+      break;
+    }
+    case "threeYears": {
+      timePointKey = 'peOffAt39'
+      break;
+    }
+    default: {
+      timePointKey = 'peOffAtSignup'
+      break;
+    }
+  }
+
+  return timePointKey
+}
+
 function setProductType(products: (Subscription & SubscriptionRelations)[]): string {
   const monthLeaseProductId = process.env.CHARGIFY_ENV == "live" ? 5874530 : 5601362;
   const yearLeaseProductId = process.env.CHARGIFY_ENV == "live" ? 5135042 : 5081978;
@@ -155,7 +189,7 @@ export class CustomerEventController {
             let data: Partial<CustomerEvent> = {
               customer_id: customer.id,
               customer_created: customer.created_at,
-              productType: productType
+              productType: productType,
             }
 
             //Initialize valid timepoints. If there are no events for a valid timepoint for a non-lease product, then PE allocation is the same as the "current" subscription allocation, so I initialize that to the peOn value for the subscription model. Lease products have PE defaulted to false. Otherwise, I assume PE defaults to "off" and rely on the events to set it.
@@ -192,9 +226,10 @@ export class CustomerEventController {
 
             type TimeKey = keyof CustomerEvent;
 
-            function setTimepoint(event: EventDb, timePoint: string): void {
+            function getTimepointKey(timePoint: string) {
               let timePointKey: TimeKey
-              switch (timePoint) {
+              let time = timePoint
+              switch (time) {
                 case "signup": {
                   timePointKey = 'peOffAtSignup'
                   break;
@@ -215,13 +250,22 @@ export class CustomerEventController {
                   timePointKey = 'peOffAt39'
                   break;
                 }
-                default:
+                default: {
                   timePointKey = 'peOffAtSignup'
                   break;
+                }
               }
 
+              return timePointKey
+            }
+
+
+            function setTimepoint(event: EventDb, timePoint: string): void {
+
+              let timePointKey: TimeKey = getTimepointKey(timePoint)
+
               if (event.previous_allocation == 1 && event.new_allocation == 0 && !peAlreadyOff) {
-                data[timePointKey] = true;
+                data[timePointKey] = true
                 peStatus = "off";
                 peAlreadyOff = true;
               } else if (event.previous_allocation == 0 && event.new_allocation == 1) {//Chargify generates this type of allocation event when a customer upgrades with PE on.
@@ -236,6 +280,7 @@ export class CustomerEventController {
                 peAlreadyOff = false
               }
             }
+
             //Loop through event array and update the valid timepoints with the event data.
 
             customerEvents.forEach(event => {
