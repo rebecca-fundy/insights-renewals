@@ -12,7 +12,7 @@ import {
   getModelSchemaRef, param, patch, post, put, requestBody,
   response
 } from '@loopback/rest';
-import {CustomerEvent, Subscription, SubscriptionRelations} from '../models';
+import {CustomerEvent, EventDb, Subscription, SubscriptionRelations} from '../models';
 import {CustomerEventRepository, CustomerRepository, DropoffTable, EventDbRepository, SubscriptionRepository} from '../repositories';
 
 function addMonths(date: Date, months: number, i?: number): Date {
@@ -188,96 +188,148 @@ export class CustomerEventController {
               data.peOffAt39 = false
             }
             let peAlreadyOff = data.peOffAtSignup;
-            let peStatus = data.peOffAtSignup ? "off" : "on"
+            let peStatus = data.peOffAtSignup ? "off" : "on";
+
+            type TimeKey = keyof CustomerEvent;
+
+            function setTimepoint(event: EventDb, timePoint: string): void {
+              let timePointKey: TimeKey
+              switch (timePoint) {
+                case "signup": {
+                  timePointKey = 'peOffAtSignup'
+                  break;
+                }
+                case "threeMonths": {
+                  timePointKey = 'peOffAt3'
+                  break;
+                }
+                case "oneYear": {
+                  timePointKey = 'peOffAt15'
+                  break;
+                }
+                case "twoYears": {
+                  timePointKey = 'peOffAt27'
+                  break;
+                }
+                case "threeYears": {
+                  timePointKey = 'peOffAt39'
+                  break;
+                }
+                default:
+                  timePointKey = 'peOffAtSignup'
+                  break;
+              }
+
+              if (event.previous_allocation == 1 && event.new_allocation == 0 && !peAlreadyOff) {
+                data[timePointKey] = true;
+                peStatus = "off";
+                peAlreadyOff = true;
+              } else if (event.previous_allocation == 0 && event.new_allocation == 1) {//Chargify generates this type of allocation event when a customer upgrades with PE on.
+                data[timePointKey] = false;
+                peStatus = "on"
+                peAlreadyOff = false
+              } else if (event.new_subscription_state == "canceled" && !peAlreadyOff) {
+                data[timePointKey] = true
+                peAlreadyOff = true
+              } else if (event.new_subscription_state == "active" && (peStatus == "on" || (data.productType !== "non-lease"))) {
+                data[timePointKey] = false
+                peAlreadyOff = false
+              }
+            }
             //Loop through event array and update the valid timepoints with the event data.
 
             customerEvents.forEach(event => {
 
               if (event.created_at <= signup) {
-                if (event.previous_allocation == 1 && event.new_allocation == 0 && !peAlreadyOff) {
-                  data.peOffAtSignup = true;
-                  peStatus = "off";
-                  peAlreadyOff = true;
-                } else if (event.previous_allocation == 0 && event.new_allocation == 1) {//Chargify generates this type of allocation event when a customer upgrades with PE on.
-                  data.peOffAtSignup = false;
-                  peStatus = "on"
-                  peAlreadyOff = false
-                } else if (event.new_subscription_state == "canceled" && !peAlreadyOff) {
-                  data.peOffAtSignup = true
-                  peAlreadyOff = true
-                } else if (event.new_subscription_state == "active" && (peStatus == "on" || (data.productType !== "non-lease"))) {
-                  data.peOffAtSignup = false
-                  peAlreadyOff = false
-                }
+                setTimepoint(event, 'signup')
+                // if (event.previous_allocation == 1 && event.new_allocation == 0 && !peAlreadyOff) {
+                //   data.peOffAtSignup = true;
+                //   peStatus = "off";
+                //   peAlreadyOff = true;
+                // } else if (event.previous_allocation == 0 && event.new_allocation == 1) {//Chargify generates this type of allocation event when a customer upgrades with PE on.
+                //   data.peOffAtSignup = false;
+                //   peStatus = "on"
+                //   peAlreadyOff = false
+                // } else if (event.new_subscription_state == "canceled" && !peAlreadyOff) {
+                //   data.peOffAtSignup = true
+                //   peAlreadyOff = true
+                // } else if (event.new_subscription_state == "active" && (peStatus == "on" || (data.productType !== "non-lease"))) {
+                //   data.peOffAtSignup = false
+                //   peAlreadyOff = false
+                // }
 
               }
               else if (event.created_at <= threeMonths) {
-                if (event.previous_allocation == 1 && event.new_allocation == 0 && !peAlreadyOff) {
-                  data.peOffAt3 = true;
-                  peStatus = "off";
-                  peAlreadyOff = true;
-                } else if (event.previous_allocation == 0 && event.new_allocation == 1) {
-                  data.peOffAt3 = false;
-                  peStatus = "on"
-                  peAlreadyOff = false
-                } else if (event.new_subscription_state == "canceled" && !peAlreadyOff) {
-                  data.peOffAt3 = true
-                  peAlreadyOff = true
-                } else if (event.new_subscription_state == "active" && (peStatus == "on" || (data.productType !== "non-lease"))) {
-                  data.peOffAt3 = false
-                  peAlreadyOff = false
-                }
+                setTimepoint(event, 'threeMonths')
+                // if (event.previous_allocation == 1 && event.new_allocation == 0 && !peAlreadyOff) {
+                //   data.peOffAt3 = true;
+                //   peStatus = "off";
+                //   peAlreadyOff = true;
+                // } else if (event.previous_allocation == 0 && event.new_allocation == 1) {
+                //   data.peOffAt3 = false;
+                //   peStatus = "on"
+                //   peAlreadyOff = false
+                // } else if (event.new_subscription_state == "canceled" && !peAlreadyOff) {
+                //   data.peOffAt3 = true
+                //   peAlreadyOff = true
+                // } else if (event.new_subscription_state == "active" && (peStatus == "on" || (data.productType !== "non-lease"))) {
+                //   data.peOffAt3 = false
+                //   peAlreadyOff = false
+                // }
               }
               else if (event.created_at <= oneYear) {
-                if (event.previous_allocation == 1 && event.new_allocation == 0 && !peAlreadyOff) {
-                  data.peOffAt15 = true;
-                  peStatus = "off";
-                  peAlreadyOff = true;
-                } else if (event.previous_allocation == 0 && event.new_allocation == 1) {
-                  data.peOffAt15 = false;
-                  peStatus = "on"
-                  peAlreadyOff = false
-                } else if (event.new_subscription_state == "canceled" && !peAlreadyOff) {
-                  data.peOffAt15 = true
-                  peAlreadyOff = true
-                } else if (event.new_subscription_state == "active" && (peStatus == "on" || (data.productType !== "non-lease"))) {
-                  data.peOffAt15 = false
-                  peAlreadyOff = false
-                }
+                setTimepoint(event, 'oneYear')
+                // if (event.previous_allocation == 1 && event.new_allocation == 0 && !peAlreadyOff) {
+                //   data.peOffAt15 = true;
+                //   peStatus = "off";
+                //   peAlreadyOff = true;
+                // } else if (event.previous_allocation == 0 && event.new_allocation == 1) {
+                //   data.peOffAt15 = false;
+                //   peStatus = "on"
+                //   peAlreadyOff = false
+                // } else if (event.new_subscription_state == "canceled" && !peAlreadyOff) {
+                //   data.peOffAt15 = true
+                //   peAlreadyOff = true
+                // } else if (event.new_subscription_state == "active" && (peStatus == "on" || (data.productType !== "non-lease"))) {
+                //   data.peOffAt15 = false
+                //   peAlreadyOff = false
+                // }
               }
               else if (event.created_at <= twoYears) {
-                if (event.previous_allocation == 1 && event.new_allocation == 0 && !peAlreadyOff) {
-                  data.peOffAt27 = true;
-                  peStatus = "off";
-                  peAlreadyOff = true;
-                } else if (event.previous_allocation == 0 && event.new_allocation == 1) {
-                  data.peOffAt27 = false;
-                  peStatus = "on"
-                  peAlreadyOff = false
-                } else if (event.new_subscription_state == "canceled" && !peAlreadyOff) {
-                  data.peOffAt27 = true
-                  peAlreadyOff = true
-                } else if (event.new_subscription_state == "active" && (peStatus == "on" || (data.productType !== "non-lease"))) {
-                  data.peOffAt27 = false
-                  peAlreadyOff = false
-                }
+                setTimepoint(event, 'twoYears')
+                // if (event.previous_allocation == 1 && event.new_allocation == 0 && !peAlreadyOff) {
+                //   data.peOffAt27 = true;
+                //   peStatus = "off";
+                //   peAlreadyOff = true;
+                // } else if (event.previous_allocation == 0 && event.new_allocation == 1) {
+                //   data.peOffAt27 = false;
+                //   peStatus = "on"
+                //   peAlreadyOff = false
+                // } else if (event.new_subscription_state == "canceled" && !peAlreadyOff) {
+                //   data.peOffAt27 = true
+                //   peAlreadyOff = true
+                // } else if (event.new_subscription_state == "active" && (peStatus == "on" || (data.productType !== "non-lease"))) {
+                //   data.peOffAt27 = false
+                //   peAlreadyOff = false
+                // }
               }
               else if (event.created_at <= threeYears) {
-                if (event.previous_allocation == 1 && event.new_allocation == 0 && !peAlreadyOff) {
-                  data.peOffAt39 = true;
-                  peStatus = "off";
-                  peAlreadyOff = true;
-                } else if (event.previous_allocation == 0 && event.new_allocation == 1) {
-                  data.peOffAt39 = false;
-                  peStatus = "on"
-                  peAlreadyOff = false
-                } else if (event.new_subscription_state == "canceled" && !peAlreadyOff) {
-                  data.peOffAt39 = true
-                  peAlreadyOff = true
-                } else if (event.new_subscription_state == "active" && (peStatus == "on" || (data.productType !== "non-lease"))) {
-                  data.peOffAt39 = false
-                  peAlreadyOff = false
-                }
+                setTimepoint(event, 'threeYears')
+                // if (event.previous_allocation == 1 && event.new_allocation == 0 && !peAlreadyOff) {
+                //   data.peOffAt39 = true;
+                //   peStatus = "off";
+                //   peAlreadyOff = true;
+                // } else if (event.previous_allocation == 0 && event.new_allocation == 1) {
+                //   data.peOffAt39 = false;
+                //   peStatus = "on"
+                //   peAlreadyOff = false
+                // } else if (event.new_subscription_state == "canceled" && !peAlreadyOff) {
+                //   data.peOffAt39 = true
+                //   peAlreadyOff = true
+                // } else if (event.new_subscription_state == "active" && (peStatus == "on" || (data.productType !== "non-lease"))) {
+                //   data.peOffAt39 = false
+                //   peAlreadyOff = false
+                // }
               }
             })
             await this.customerEventRepository.create(data)
