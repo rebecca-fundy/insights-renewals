@@ -160,15 +160,15 @@ export class CustomerEventController {
 
             //Initialize valid timepoints. If there are no events for a valid timepoint for a non-lease product, then PE allocation is the same as the "current" subscription allocation, so I initialize that to the peOn value for the subscription model. Lease products have PE defaulted to false. Otherwise, I assume PE defaults to "off" and rely on the events to set it.
             //If there are no events for a valid timepoint for a lease product, then it was never canceled, so that should be false.
-            let allocationEventsForInit = customerEvents.filter(events => events.subscription_id == products[0].id && events.previous_allocation != null);
-            let allocationEvents = allocationEventsForInit.length
+            let allocationEventsForInit = customerEvents.filter(events => events.subscription_id == products[0].id && events.previous_allocation != null); //Check for first subscription for allocation events
+            let allocationEvents = allocationEventsForInit.length //If there are no allocation events, returns 0 / false
             //Initialize signup timepoint. Disregard customers with no products.
             if (data.peOffAtSignup === undefined && products.length != 0) {
               if (data.productType != "non-lease") { //Lease products are turn on at signup by definition, so they will never be off at signup
                 data.peOffAtSignup = false
-              } else if (!allocationEvents) { //No allocation events for this customer in their first subscription means signup allocation same as current allocation in first subscription
+              } else if (!allocationEvents) { //No allocation events for this customer in their first subscription means signup allocation same as final allocation in first subscription
                 data.peOffAtSignup = !products[0].peOn
-              } else if (allocationEvents) { //If there are any allocation events in the events array, we can use the previous allocation of the first one to deduce the status at signup
+              } else if (allocationEvents) { //If there are any allocation events in the first subscription, we can use the previous allocation of the first one to deduce the status at signup
                 data.peOffAtSignup = allocationEventsForInit[0].previous_allocation == 0 ? true : false
               } else {
                 data.peOffAtSignup = true
