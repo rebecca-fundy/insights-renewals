@@ -162,40 +162,6 @@ export class CustomerEventController {
               productType: productType,
             }
 
-            //Initialize valid timepoints. If there are no events for a valid timepoint for a non-lease product, then PE allocation is the same as the "current" subscription allocation, so I initialize that to the peOn value for the subscription model. Lease products have PE defaulted to false. Otherwise, I assume PE defaults to "off" and rely on the events to set it.
-            //If there are no events for a valid timepoint for a lease product, then it was never canceled, so that should be false.
-
-            let allocationEventsForInit = products.length !== 0 ? customerEvents.filter(events => events.subscription_id == products[0].id && events.previous_allocation != null) : []; //Check for first subscription for allocation events
-            let allocationEvents = allocationEventsForInit.length //If there are no allocation events, returns 0 / false
-
-            //Initialize signup timepoint. Disregard customers with no products.
-            if (data.peOffAtSignup === undefined && products.length != 0) {
-              if (data.productType != "non-lease") { //Lease products are turned on at signup by definition, so they will never be off at signup
-                data.peOffAtSignup = false
-              } else if (!allocationEvents) { //No allocation events for this customer in their first subscription means signup allocation same as final allocation in first subscription
-                data.peOffAtSignup = !products[0].peOn
-              } else if (allocationEvents) { //If there are any allocation events in the first subscription, we can use the previous allocation of the first one to deduce the status at signup
-                data.peOffAtSignup = allocationEventsForInit[0].previous_allocation == 0 ? true : false
-              } else {
-                data.peOffAtSignup = true //As a failsafe, initialize to no PE at signup because customers must opt in
-              }
-            }
-            //Initialize other valid (relative to time elapsed since first signup) timepoints
-            if (today > threeMonths && data.peOffAt3 === undefined) {
-              data.peOffAt3 = false
-            }
-            if (today > oneYear && data.peOffAt15 === undefined) {
-              data.peOffAt15 = false
-            }
-            if (today > twoYears && data.peOffAt27 === undefined) {
-              data.peOffAt27 = false
-            }
-            if (today > threeYears && data.peOffAt39 === undefined) {
-              data.peOffAt39 = false
-            }
-            let peAlreadyOff = data.peOffAtSignup;
-            let peStatus = data.peOffAtSignup ? "off" : "on";
-
             type TimeKey = keyof CustomerEvent;
 
             function getTimepointKey(timePoint: string) {
@@ -252,6 +218,42 @@ export class CustomerEventController {
                 peAlreadyOff = false
               }
             }
+
+            //Initialize valid timepoints. If there are no events for a valid timepoint for a non-lease product, then PE allocation is the same as the "current" subscription allocation, so I initialize that to the peOn value for the subscription model. Lease products have PE defaulted to false. Otherwise, I assume PE defaults to "off" and rely on the events to set it.
+            //If there are no events for a valid timepoint for a lease product, then it was never canceled, so that should be false.
+
+            let allocationEventsForInit = products.length !== 0 ? customerEvents.filter(events => events.subscription_id == products[0].id && events.previous_allocation != null) : []; //Check for first subscription for allocation events
+            let allocationEvents = allocationEventsForInit.length //If there are no allocation events, returns 0 / false
+
+            //Initialize signup timepoint. Disregard customers with no products.
+            if (data.peOffAtSignup === undefined && products.length != 0) {
+              if (data.productType != "non-lease") { //Lease products are turned on at signup by definition, so they will never be off at signup
+                data.peOffAtSignup = false
+              } else if (!allocationEvents) { //No allocation events for this customer in their first subscription means signup allocation same as final allocation in first subscription
+                data.peOffAtSignup = !products[0].peOn
+              } else if (allocationEvents) { //If there are any allocation events in the first subscription, we can use the previous allocation of the first one to deduce the status at signup
+                data.peOffAtSignup = allocationEventsForInit[0].previous_allocation == 0 ? true : false
+              } else {
+                data.peOffAtSignup = true //As a failsafe, initialize to no PE at signup because customers must opt in
+              }
+            }
+            //Initialize other valid (relative to time elapsed since first signup) timepoints
+            if (today > threeMonths && data.peOffAt3 === undefined) {
+              data.peOffAt3 = false
+            }
+            if (today > oneYear && data.peOffAt15 === undefined) {
+              data.peOffAt15 = false
+            }
+            if (today > twoYears && data.peOffAt27 === undefined) {
+              data.peOffAt27 = false
+            }
+            if (today > threeYears && data.peOffAt39 === undefined) {
+              data.peOffAt39 = false
+            }
+            let peAlreadyOff = data.peOffAtSignup;
+            let peStatus = data.peOffAtSignup ? "off" : "on";
+
+
 
             //Loop through event array and update the valid timepoints with the event data.
 
