@@ -32,40 +32,6 @@ function addMonths(date: Date, months: number, i?: number): Date {
   return date2;
 }
 
-type TimeKey = keyof CustomerEvent;
-
-function getTimepointKey(timePoint: string): TimeKey {
-  let timePointKey: TimeKey
-  switch (timePoint) {
-    case "signup": {
-      timePointKey = 'peOffAtSignup'
-      break;
-    }
-    case "threeMonths": {
-      timePointKey = 'peOffAt3'
-      break;
-    }
-    case "oneYear": {
-      timePointKey = 'peOffAt15'
-      break;
-    }
-    case "twoYears": {
-      timePointKey = 'peOffAt27'
-      break;
-    }
-    case "threeYears": {
-      timePointKey = 'peOffAt39'
-      break;
-    }
-    default: {
-      timePointKey = 'peOffAtSignup'
-      break;
-    }
-  }
-
-  return timePointKey
-}
-
 function setProductType(products: (Subscription & SubscriptionRelations)[]): string {
   const monthLeaseProductId = process.env.CHARGIFY_ENV == "live" ? 5874530 : 5601362;
   const yearLeaseProductId = process.env.CHARGIFY_ENV == "live" ? 5135042 : 5081978;
@@ -76,6 +42,8 @@ function setProductType(products: (Subscription & SubscriptionRelations)[]): str
     productType = "year lease"
   } else if (products.length != 0) {
     productType = "non-lease"
+  } else {
+    productType = ""
   }
   return productType;
 }
@@ -184,7 +152,9 @@ export class CustomerEventController {
             let twoYears = addMonths(signupPlus3wks, 27)
             let threeYears = addMonths(signupPlus3wks, 39)
             //Set product type for this customer.
+            if (customer.id == 33259723) {console.log(`product array: ${JSON.stringify(products)}`)}
             let productType = setProductType(products);
+            if (customer.id == 33259723) {console.log(`product type: ${JSON.stringify(productType)}`)}
 
             let data: Partial<CustomerEvent> = {
               customer_id: customer.id,
@@ -194,8 +164,10 @@ export class CustomerEventController {
 
             //Initialize valid timepoints. If there are no events for a valid timepoint for a non-lease product, then PE allocation is the same as the "current" subscription allocation, so I initialize that to the peOn value for the subscription model. Lease products have PE defaulted to false. Otherwise, I assume PE defaults to "off" and rely on the events to set it.
             //If there are no events for a valid timepoint for a lease product, then it was never canceled, so that should be false.
-            let allocationEventsForInit = customerEvents.filter(events => events.subscription_id == products[0].id && events.previous_allocation != null); //Check for first subscription for allocation events
+
+            let allocationEventsForInit = products.length !== 0 ? customerEvents.filter(events => events.subscription_id == products[0].id && events.previous_allocation != null) : []; //Check for first subscription for allocation events
             let allocationEvents = allocationEventsForInit.length //If there are no allocation events, returns 0 / false
+
             //Initialize signup timepoint. Disregard customers with no products.
             if (data.peOffAtSignup === undefined && products.length != 0) {
               if (data.productType != "non-lease") { //Lease products are turn on at signup by definition, so they will never be off at signup
@@ -328,7 +300,7 @@ export class CustomerEventController {
 
     let threeYrDropCount = totalCust.filter(cust => cust.peOffAt39).length
     let threeYrFalseCount = totalCust.filter(cust => cust.peOffAt39 === false).length
-    let dropoffAt3y = threeYrDropCount / threeYrFalseCount + threeYrDropCount;
+    let dropoffAt3y = threeYrDropCount / (threeYrFalseCount + threeYrDropCount);
 
     let dropOffs: DropoffTable = {dropoffAtSignup, dropoffAt3m, dropoffAt1y, dropoffAt2y, dropoffAt3y}
 
