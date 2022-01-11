@@ -107,10 +107,6 @@ export class CustomerEventController {
     return this.customerEventRepository.find(filter);
   }
 
-<<<<<<< HEAD
-
-=======
->>>>>>> dryCode
   @get('/customer-events/drop-offs')
   @response(200, {
     description: 'Object with drop-off perentages',
