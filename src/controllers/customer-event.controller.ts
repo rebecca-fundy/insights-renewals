@@ -16,19 +16,16 @@ import {CustomerEvent, EventDb, Subscription, SubscriptionRelations} from '../mo
 import {CustomerEventRepository, CustomerRepository, DropoffTable, EventDbRepository, SubscriptionRepository} from '../repositories';
 
 function addMonths(date: Date, months: number, i?: number): Date {
-  // console.log('date= ' + date)
   let date2 = new Date(date)
   let d = date2.getDate();
-  // getDate gets day of the month (1 - 31)
-  // if (i == 0) {console.log('d in addMonths fcn: ' + d)}
-  date2.setMonth(date2.getMonth() + +months);
-  //gets month from parameter, adds months param, then calls setMonth
-  // if (i == 0) {console.log('date after call to setMonth before if: ' + date2.getDate())}
+
+  date2.setMonth(date2.getMonth() + +months); //gets month from parameter, adds months param, then calls setMonth
+
+  //if the day of the month is not equal to the original after adding the month then reset the day of the month to the last day of the previous month.
   if (date2.getDate() != d) {
     date2.setDate(0);
   }
-  //if the day of the month is not equal to the original after adding the month then reset the day of the month to the last day of the previous month.
-  // if (i == 0) {console.log('date after call to setMonth after if: ' + date2.getDate())}
+
   return date2;
 }
 
@@ -58,7 +55,6 @@ export class CustomerEventController {
     public subscriptionRepository: SubscriptionRepository,
     @repository(EventDbRepository)
     public eventDbRepository: EventDbRepository,
-    // public dropoffTable: DropoffTable
   ) { }
 
   @post('/customer-events')
@@ -111,7 +107,6 @@ export class CustomerEventController {
     return this.customerEventRepository.find(filter);
   }
 
-  //Add drop-off type (PE, month lease, year lease) to model, service, params
   @get('/customer-events/drop-offs')
   @response(200, {
     description: 'Object with drop-off perentages',
@@ -152,9 +147,8 @@ export class CustomerEventController {
             let twoYears = addMonths(signupPlus3wks, 27)
             let threeYears = addMonths(signupPlus3wks, 39)
             //Set product type for this customer.
-            if (customer.id == 33259723) {console.log(`product array: ${JSON.stringify(products)}`)}
             let productType = setProductType(products);
-            if (customer.id == 33259723) {console.log(`product type: ${JSON.stringify(productType)}`)}
+
 
             let data: Partial<CustomerEvent> = {
               customer_id: customer.id,
@@ -162,39 +156,14 @@ export class CustomerEventController {
               productType: productType,
             }
 
-            type TimeKey = keyof CustomerEvent;
+            type TimeKey = "peOffAtSignup" | "peOffAt3" | "peOffAt15" | "peOffAt27" | "peOffAt39"
 
-            function getTimepointKey(timePoint: string) {
-              let timePointKey: TimeKey
-              let time = timePoint
-              switch (time) {
-                case "signup": {
-                  timePointKey = 'peOffAtSignup'
-                  break;
-                }
-                case "threeMonths": {
-                  timePointKey = 'peOffAt3'
-                  break;
-                }
-                case "oneYear": {
-                  timePointKey = 'peOffAt15'
-                  break;
-                }
-                case "twoYears": {
-                  timePointKey = 'peOffAt27'
-                  break;
-                }
-                case "threeYears": {
-                  timePointKey = 'peOffAt39'
-                  break;
-                }
-                default: {
-                  timePointKey = 'peOffAtSignup'
-                  break;
-                }
-              }
+            let timepoints: Date[] = [signup, threeMonths, oneYear, twoYears, threeYears];
+            const timepointStrs: string[] = ['signup', 'threeMonths', 'oneYear', 'twoYears', 'threeYears'];
+            const timepointKeys: TimeKey[] = ['peOffAtSignup', 'peOffAt3', 'peOffAt15', 'peOffAt27', 'peOffAt39']
 
-              return timePointKey
+            function getTimepointKey(timePoint: string): TimeKey {
+              return timepointKeys[timepointStrs.indexOf(timePoint)]
             }
 
 
@@ -237,26 +206,21 @@ export class CustomerEventController {
                 data.peOffAtSignup = true //As a failsafe, initialize to no PE at signup because customers must opt in
               }
             }
+
             //Initialize other valid (relative to time elapsed since first signup) timepoints
-            if (today > threeMonths && data.peOffAt3 === undefined) {
-              data.peOffAt3 = false
+            for (let i = 1; i < timepoints.length; i++) { //Start at three months (index = 1 instead of 0) because we've already initialized signup timepoint.
+              let timepointStr = timepointStrs[i];
+              let timeKey = getTimepointKey(timepointStr);
+              if (today > timepoints[i] && data[timeKey] === undefined) {
+                data[timeKey] = false
+              }
             }
-            if (today > oneYear && data.peOffAt15 === undefined) {
-              data.peOffAt15 = false
-            }
-            if (today > twoYears && data.peOffAt27 === undefined) {
-              data.peOffAt27 = false
-            }
-            if (today > threeYears && data.peOffAt39 === undefined) {
-              data.peOffAt39 = false
-            }
+
+
             let peAlreadyOff = data.peOffAtSignup;
             let peStatus = data.peOffAtSignup ? "off" : "on";
 
-
-
             //Loop through event array and update the valid timepoints with the event data.
-
             customerEvents.forEach(event => {
 
               if (event.created_at <= signup) {
@@ -282,6 +246,7 @@ export class CustomerEventController {
     //filter on product type = "non-lease", "month lease" or "year lease"
     //Pro Enhancement filters do not apply to lease products.
     //Need to make it more generic.
+
     let totalCust = (await this.find(filter));
     let signupDropCount = totalCust.filter(cust => cust.peOffAtSignup).length
     let signupFalseCount = totalCust.filter(cust => cust.peOffAtSignup === false).length
