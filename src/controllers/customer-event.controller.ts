@@ -104,23 +104,6 @@ export class CustomerEventController {
   async find(
     @param.filter(CustomerEvent) filter?: Filter<CustomerEvent>,
   ): Promise<CustomerEvent[]> {
-    return this.customerEventRepository.find(filter);
-  }
-
-  @get('/customer-events/drop-offs')
-  @response(200, {
-    description: 'Object with drop-off perentages',
-    content: {
-      'application/json': {
-        schema: {
-          // type:
-        },
-      },
-    },
-  })
-  async findDropOffs(
-    @param.filter(CustomerEvent) filter?: Filter<CustomerEvent>,
-  ): Promise<DropoffTable> {
     let customerEventCount = (await this.customerEventRepository.count()).count;
     if (customerEventCount == 0) {
       //Setting of historical PE event data by customer
@@ -243,6 +226,24 @@ export class CustomerEventController {
           }
         })
     }
+    return this.customerEventRepository.find(filter);
+  }
+
+  @get('/customer-events/drop-offs')
+  @response(200, {
+    description: 'Object with drop-off perentages',
+    content: {
+      'application/json': {
+        schema: {
+          // type:
+        },
+      },
+    },
+  })
+  async findDropOffs(
+    @param.filter(CustomerEvent) filter?: Filter<CustomerEvent>,
+  ): Promise<DropoffTable> {
+
     //filter on product type = "non-lease", "month lease" or "year lease"
     //Pro Enhancement filters do not apply to lease products.
     //Need to make it more generic.
