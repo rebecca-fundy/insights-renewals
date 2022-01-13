@@ -269,8 +269,34 @@ export class CustomerEventController {
     let threeYrFalseCount = totalCust.filter(cust => cust.peOffAt39 === false).length
     let dropoffAt3y = threeYrDropCount / (threeYrFalseCount + threeYrDropCount);
 
-    let dropOffs: DropoffTable = {dropoffAtSignup, dropoffAt3m, dropoffAt1y, dropoffAt2y, dropoffAt3y}
-
+    let dropOffs: DropoffTable = {
+      title: "Renewal dropoffs",
+      noOptIn: {
+        name: "No opt in",
+        userCount: dropoffAtSignup,
+        countOnly: true
+      },
+      dropoff3m: {
+        name: "dropoff 3m",
+        userCount: dropoffAt3m,
+        countOnly: true,
+      },
+      dropoff1y: {
+        name: "dropoff 1y",
+        userCount: dropoffAt1y,
+        countOnly: true
+      },
+      dropoff2y: {
+        name: "dropoff 2y",
+        userCount: dropoffAt2y,
+        countOnly: true
+      },
+      dropoff3y: {
+        name: "dropoff 3y",
+        userCount: dropoffAt3y,
+        countOnly: true
+      },
+    }
     return dropOffs;
   }
 
