@@ -251,23 +251,24 @@ export class CustomerEventController {
     let totalCust = (await this.find(filter));
     let signupDropCount = totalCust.filter(cust => cust.peOffAtSignup).length
     let signupFalseCount = totalCust.filter(cust => cust.peOffAtSignup === false).length
-    let dropoffAtSignup = signupDropCount / (signupFalseCount + signupDropCount)
+    let dropoffAtSignup = Math.round((signupDropCount / (signupFalseCount + signupDropCount)) * 100)
+    // Math.round((num + Number.EPSILON) * 100)
     let threeMthDropCount = totalCust.filter(cust => cust.peOffAt3).length
     //null values indicate that the time point filter does not apply to this customer (e.g. it is less than 3 months since the customer creation date) so we need to distinguish between null values and false values.
     let threeMthFalseCount = totalCust.filter(cust => cust.peOffAt3 === false).length
-    let dropoffAt3m = threeMthDropCount / (threeMthFalseCount + threeMthDropCount);
+    let dropoffAt3m = Math.round((threeMthDropCount / (threeMthFalseCount + threeMthDropCount)) * 100);
 
     let oneYrDropCount = totalCust.filter(cust => cust.peOffAt15).length
     let oneYrFalseCount = totalCust.filter(cust => cust.peOffAt15 === false).length
-    let dropoffAt1y = oneYrDropCount / (oneYrFalseCount + oneYrDropCount);
+    let dropoffAt1y = Math.round((oneYrDropCount / (oneYrFalseCount + oneYrDropCount)) * 100);
 
     let twoYrDropCount = totalCust.filter(cust => cust.peOffAt27).length
     let twoYrFalseCount = totalCust.filter(cust => cust.peOffAt27 === false).length
-    let dropoffAt2y = twoYrDropCount / (twoYrFalseCount + twoYrDropCount);
+    let dropoffAt2y = Math.round((twoYrDropCount / (twoYrFalseCount + twoYrDropCount)) * 100);
 
     let threeYrDropCount = totalCust.filter(cust => cust.peOffAt39).length
     let threeYrFalseCount = totalCust.filter(cust => cust.peOffAt39 === false).length
-    let dropoffAt3y = threeYrDropCount / (threeYrFalseCount + threeYrDropCount);
+    let dropoffAt3y = Math.round((threeYrDropCount / (threeYrFalseCount + threeYrDropCount)) * 100);
 
     let dropOffs: DropoffTable = {
       title: "Renewal dropoffs",
