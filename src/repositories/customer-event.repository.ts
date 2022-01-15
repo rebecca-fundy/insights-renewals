@@ -19,6 +19,7 @@ export interface DropoffTable {
   dropoff3y: DropoffRow
 }
 
+
 export class CustomerEventRepository extends DefaultCrudRepository<
   CustomerEvent,
   typeof CustomerEvent.prototype.idCustomerEvent,

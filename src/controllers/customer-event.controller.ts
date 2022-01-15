@@ -242,63 +242,73 @@ export class CustomerEventController {
   })
   async findDropOffs(
     @param.filter(CustomerEvent) filter?: Filter<CustomerEvent>,
-  ): Promise<DropoffTable> {
-
+  ): Promise<DropoffTable[]> {
+    // ): Promise<DropoffTable> {
+    let dropoffArray: DropoffTable[] = []
     //filter on product type = "non-lease", "month lease" or "year lease"
     //Pro Enhancement filters do not apply to lease products.
     //Need to make it more generic.
+    const productTypes = ["non-lease", "year lease", "month lease"];
+    const tableTitles = ["PE dropoffs", "Year Lease", "Month Lease"]
+    for (let i = 0; i < productTypes.length; i++) {
 
-    let totalCust = (await this.find(filter));
-    let signupDropCount = totalCust.filter(cust => cust.peOffAtSignup).length
-    let signupFalseCount = totalCust.filter(cust => cust.peOffAtSignup === false).length
-    let dropoffAtSignup = Math.round((signupDropCount / (signupFalseCount + signupDropCount)) * 100)
-    // Math.round((num + Number.EPSILON) * 100)
-    let threeMthDropCount = totalCust.filter(cust => cust.peOffAt3).length
-    //null values indicate that the time point filter does not apply to this customer (e.g. it is less than 3 months since the customer creation date) so we need to distinguish between null values and false values.
-    let threeMthFalseCount = totalCust.filter(cust => cust.peOffAt3 === false).length
-    let dropoffAt3m = Math.round((threeMthDropCount / (threeMthFalseCount + threeMthDropCount)) * 100);
+      let productFilter: Filter<CustomerEvent> = {"where": {"productType": `${productTypes[i]}`}}
 
-    let oneYrDropCount = totalCust.filter(cust => cust.peOffAt15).length
-    let oneYrFalseCount = totalCust.filter(cust => cust.peOffAt15 === false).length
-    let dropoffAt1y = Math.round((oneYrDropCount / (oneYrFalseCount + oneYrDropCount)) * 100);
 
-    let twoYrDropCount = totalCust.filter(cust => cust.peOffAt27).length
-    let twoYrFalseCount = totalCust.filter(cust => cust.peOffAt27 === false).length
-    let dropoffAt2y = Math.round((twoYrDropCount / (twoYrFalseCount + twoYrDropCount)) * 100);
+      // let totalCust = (await this.find(filter));
+      let totalCust = (await this.find(productFilter));
 
-    let threeYrDropCount = totalCust.filter(cust => cust.peOffAt39).length
-    let threeYrFalseCount = totalCust.filter(cust => cust.peOffAt39 === false).length
-    let dropoffAt3y = Math.round((threeYrDropCount / (threeYrFalseCount + threeYrDropCount)) * 100);
+      let signupDropCount = totalCust.filter(cust => cust.peOffAtSignup).length
+      let signupFalseCount = totalCust.filter(cust => cust.peOffAtSignup === false).length
+      let dropoffAtSignup = Math.round((signupDropCount / (signupFalseCount + signupDropCount)) * 100)
 
-    let dropOffs: DropoffTable = {
-      title: "Renewal dropoffs",
-      noOptIn: {
-        name: "No opt in",
-        userCount: dropoffAtSignup,
-        countOnly: true
-      },
-      dropoff3m: {
-        name: "dropoff 3m",
-        userCount: dropoffAt3m,
-        countOnly: true,
-      },
-      dropoff1y: {
-        name: "dropoff 1y",
-        userCount: dropoffAt1y,
-        countOnly: true
-      },
-      dropoff2y: {
-        name: "dropoff 2y",
-        userCount: dropoffAt2y,
-        countOnly: true
-      },
-      dropoff3y: {
-        name: "dropoff 3y",
-        userCount: dropoffAt3y,
-        countOnly: true
-      },
+      let threeMthDropCount = totalCust.filter(cust => cust.peOffAt3).length
+      let threeMthFalseCount = totalCust.filter(cust => cust.peOffAt3 === false).length
+      let dropoffAt3m = Math.round((threeMthDropCount / (threeMthFalseCount + threeMthDropCount)) * 100);
+
+      let oneYrDropCount = totalCust.filter(cust => cust.peOffAt15).length
+      let oneYrFalseCount = totalCust.filter(cust => cust.peOffAt15 === false).length
+      let dropoffAt1y = Math.round((oneYrDropCount / (oneYrFalseCount + oneYrDropCount)) * 100);
+
+      let twoYrDropCount = totalCust.filter(cust => cust.peOffAt27).length
+      let twoYrFalseCount = totalCust.filter(cust => cust.peOffAt27 === false).length
+      let dropoffAt2y = Math.round((twoYrDropCount / (twoYrFalseCount + twoYrDropCount)) * 100);
+
+      let threeYrDropCount = totalCust.filter(cust => cust.peOffAt39).length
+      let threeYrFalseCount = totalCust.filter(cust => cust.peOffAt39 === false).length
+      let dropoffAt3y = Math.round((threeYrDropCount / (threeYrFalseCount + threeYrDropCount)) * 100);
+
+      dropoffArray[i] = {
+        title: tableTitles[i],
+        noOptIn: {
+          name: "No opt in",
+          userCount: dropoffAtSignup,
+          countOnly: true
+        },
+        dropoff3m: {
+          name: "dropoff 3m",
+          userCount: dropoffAt3m,
+          countOnly: true,
+        },
+        dropoff1y: {
+          name: "dropoff 1y",
+          userCount: dropoffAt1y,
+          countOnly: true
+        },
+        dropoff2y: {
+          name: "dropoff 2y",
+          userCount: dropoffAt2y,
+          countOnly: true
+        },
+        dropoff3y: {
+          name: "dropoff 3y",
+          userCount: dropoffAt3y,
+          countOnly: true
+        },
+      }
     }
-    return dropOffs;
+    return dropoffArray;
+    // return dropoffArray[0];
   }
 
 
