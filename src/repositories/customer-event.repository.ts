@@ -3,6 +3,7 @@ import {DefaultCrudRepository} from '@loopback/repository';
 import {DbDataSource} from '../datasources';
 import {CustomerEvent, CustomerEventRelations} from '../models';
 
+
 export interface DropoffRow {
   name: string,
   amount?: number,

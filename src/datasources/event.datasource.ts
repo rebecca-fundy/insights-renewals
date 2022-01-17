@@ -8,19 +8,19 @@ let apiKey = process.env.CHARGIFY_ENV == "live" ? process.env.CHARGIFY_API_KEY :
 const config = {
   name: 'restds',
   connector: 'rest',
-  baseURL: 'https://fundy-suite.chargify.com/',
   crud: false,
+  baseUrl: url,
   options: {
     headers: {
       "content-type": "application/json",
-      "authorization": "Basic cEI2bjYyWWFCUFMwRnY3RUFkaVlNTTRwVTdHMUE2TkZLazI5d1J2TjA6eA==",
+      "authorization": `Basic ${apiKey}`,
     },
   },
   operations: [
     {
       template: {
         method: 'GET',
-        url: `https://fundy-suite.chargify.com/events.json?date_field=created_at&filter=component_allocation_change,subscription_state_change&direction=asc&per_page=200&page={page}`,
+        url: `https://${url}/events.json?date_field=created_at&filter=component_allocation_change,subscription_state_change&direction=asc&per_page=200&page={page}`,
       },
       functions:
       {
@@ -30,7 +30,7 @@ const config = {
     {
       template: {
         method: 'GET',
-        url: 'https://fundy-suite-sandbox.chargify.com/subscriptions/{subId}/components/{compId}/allocations.json',
+        url: 'https://${url}/subscriptions/{subId}/components/{compId}/allocations.json',
       },
       functions:
       {
