@@ -6,7 +6,7 @@ import {SubscriptionSandbox} from './subscription-sandbox.model';
 export class CustomerSandbox extends Customer {
 
 
-  @hasMany(() => SubscriptionSandbox, {keyTo: 'sandbox_customer_id'})
+  @hasMany(() => SubscriptionSandbox, {keyTo: 'customer_id'})
   subscriptionSandboxes: SubscriptionSandbox[];
 
   constructor(data?: Partial<CustomerSandbox>) {

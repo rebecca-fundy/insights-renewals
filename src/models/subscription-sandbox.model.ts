@@ -10,7 +10,7 @@ export class SubscriptionSandbox extends Subscription {
     generated: false,
     required: true
   })
-  sandbox_customer_id?: number;
+  customer_id: number;
 
   constructor(data?: Partial<SubscriptionSandbox>) {
     super(data);

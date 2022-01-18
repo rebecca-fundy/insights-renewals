@@ -13,13 +13,15 @@ import {
   response
 } from '@loopback/rest';
 import {EventDb} from '../models';
-import {AllocationRepository, CustomerEventRepository, CustomerRepository, EventDbRepository, SubscriptionRepository} from '../repositories';
+import {AllocationRepository, CustomerEventRepository, CustomerRepository, EventDbRepository, EventDbSandboxRepository, SubscriptionRepository} from '../repositories';
 import {Event, EventObject} from '../services';
 
 export class EventController {
   constructor(
     @repository(EventDbRepository)
     public eventDbRepository: EventDbRepository,
+    @repository(EventDbSandboxRepository)
+    public eventDbSandboxRepository: EventDbSandboxRepository,
     @repository(CustomerRepository)
     public customerRepository: CustomerRepository,
     @repository(SubscriptionRepository)
@@ -143,13 +145,17 @@ export class EventController {
           previous_subscription_state: eventItem.event_specific_data.previous_subscription_state,
           new_subscription_state: eventItem.event_specific_data.new_subscription_state
         }
-        await this.eventDbRepository.create(eventData);
+        if (process.env.CHARGIFY_ENV == "live") {
+          await this.eventDbRepository.create(eventData)
+        } else {
+          await this.eventDbSandboxRepository.create(eventData)
+        };
       }
 
     }
     catch (err) {console.log(err.message)}
     finally {
-      return this.eventDbRepository.find(filter);
+      return process.env.CHARGIFY_ENV == "live" ? this.eventDbRepository.find(filter) : this.eventDbSandboxRepository.find(filter);
     }
   }
 

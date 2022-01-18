@@ -129,8 +129,10 @@ export class CustomerEventController {
       console.log('debug3')
       // const customerArray = (isLive ? (await this.customerRepository.find()) : (await this.customerSandboxRepository.find()))
       // await this.customerRepository.find()
-      const customerArray = await (isLive ? (this.customerRepository.find()) : (this.customerSandboxRepository.find()))
+      await (isLive ? (this.customerRepository.find()) : (this.customerSandboxRepository.find()))
         .then(async customerArray => {
+          console.log('customerArray.length = ' + customerArray.length);
+
           for (let i = 0; i < customerArray.length; i++) {
             let customer = customerArray[i]; //For each customer in the customer array...
             let customerEvents = eventArray.filter(event => event.customer_id == customer.id) //Filter the events array to events for this customer
@@ -238,11 +240,15 @@ export class CustomerEventController {
                 setTimepoint(event, 'threeYears')
               }
             })
-            await this.customerEventRepository.create(data)
+            if (isLive) {
+              await this.customerEventRepository.create(data)
+            } else {
+              await this.customerEventSandboxRepository.create(data)
+            }
           }
         })
     }
-    return this.customerEventRepository.find(filter);
+    return isLive ? this.customerEventRepository.find(filter) : this.customerEventSandboxRepository.find(filter);
   }
 
   @get('/customer-events/drop-offs')

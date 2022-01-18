@@ -9,7 +9,7 @@ const config = {
   name: 'restds',
   connector: 'rest',
   crud: false,
-  baseUrl: url,
+  // baseUrl: `${url}`,
   options: {
     headers: {
       "content-type": "application/json",
