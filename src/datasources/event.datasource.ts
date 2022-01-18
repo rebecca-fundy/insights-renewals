@@ -1,6 +1,6 @@
 import {inject, lifeCycleObserver, LifeCycleObserver} from '@loopback/core';
 import {juggler} from '@loopback/repository';
-const dotenv = require('dotenv').config();
+// const dotenv = require('dotenv').config();
 //
 let url = process.env.CHARGIFY_ENV == "live" ? process.env.CHARGIFY_URL : process.env.SANDBOX_URL
 let apiKey = process.env.CHARGIFY_ENV == "live" ? process.env.CHARGIFY_API_KEY : process.env.SANDBOX_API_KEY

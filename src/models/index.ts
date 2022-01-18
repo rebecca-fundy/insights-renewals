@@ -3,3 +3,7 @@ export * from './subscription.model';
 export * from './event-db.model';
 export * from './customer-event.model';
 export * from './allocation.model';
+export * from './customer-sandbox.model';
+export * from './subscription-sandbox.model';
+export * from './event-db-sandbox.model';
+export * from './customer-event-sandbox.model';

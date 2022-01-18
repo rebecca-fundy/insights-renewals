@@ -13,7 +13,9 @@ import {
   response
 } from '@loopback/rest';
 import {CustomerEvent, EventDb, Subscription, SubscriptionRelations} from '../models';
-import {CustomerEventRepository, CustomerRepository, DropoffTable, EventDbRepository, SubscriptionRepository} from '../repositories';
+import {CustomerEventRepository, CustomerEventSandboxRepository, CustomerRepository, CustomerSandboxRepository, DropoffTable, EventDbRepository, EventDbSandboxRepository, SubscriptionRepository, SubscriptionSandboxRepository} from '../repositories';
+
+let isLive: boolean = process.env.CHARGIFY_ENV == "live";
 
 function addMonths(date: Date, months: number, i?: number): Date {
   let date2 = new Date(date)
@@ -49,12 +51,20 @@ export class CustomerEventController {
   constructor(
     @repository(CustomerEventRepository)
     public customerEventRepository: CustomerEventRepository,
+    @repository(CustomerEventSandboxRepository)
+    public customerEventSandboxRepository: CustomerEventSandboxRepository,
     @repository(CustomerRepository)
     public customerRepository: CustomerRepository,
+    @repository(CustomerSandboxRepository)
+    public customerSandboxRepository: CustomerSandboxRepository,
     @repository(SubscriptionRepository)
     public subscriptionRepository: SubscriptionRepository,
+    @repository(SubscriptionSandboxRepository)
+    public subscriptionSandboxRepository: SubscriptionSandboxRepository,
     @repository(EventDbRepository)
     public eventDbRepository: EventDbRepository,
+    @repository(EventDbSandboxRepository)
+    public eventDbSandboxRepository: EventDbSandboxRepository,
   ) { }
 
   @post('/customer-events')
@@ -104,16 +114,22 @@ export class CustomerEventController {
   async find(
     @param.filter(CustomerEvent) filter?: Filter<CustomerEvent>,
   ): Promise<CustomerEvent[]> {
-    let customerEventCount = (await this.customerEventRepository.count()).count;
+    console.log('chargify env live: ' + isLive)
+    let customerEventCount = isLive ? (await this.customerEventRepository.count()).count : (await this.customerEventSandboxRepository.count()).count;
+
     if (customerEventCount == 0) {
       //Setting of historical PE event data by customer
       let today = new Date();
-
+      console.log('debug1')
       //Grab array of customers and events; events ordered by ascending creation date.
 
-      let subscriptionArray = await this.subscriptionRepository.find();
-      const eventArray = await this.eventDbRepository.find({order: ["subscription_id ASC", "created_at ASC"]});
-      await this.customerRepository.find()
+      let subscriptionArray = isLive ? (await this.subscriptionRepository.find()) : (await this.subscriptionSandboxRepository.find());
+      console.log('debug2')
+      const eventArray = isLive ? await this.eventDbRepository.find({order: ["subscription_id ASC", "created_at ASC"]}) : await this.eventDbSandboxRepository.find({order: ["subscription_id ASC", "created_at ASC"]});
+      console.log('debug3')
+      // const customerArray = (isLive ? (await this.customerRepository.find()) : (await this.customerSandboxRepository.find()))
+      // await this.customerRepository.find()
+      const customerArray = await (isLive ? (this.customerRepository.find()) : (this.customerSandboxRepository.find()))
         .then(async customerArray => {
           for (let i = 0; i < customerArray.length; i++) {
             let customer = customerArray[i]; //For each customer in the customer array...
