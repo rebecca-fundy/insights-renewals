@@ -6,3 +6,4 @@ export * from './customer-event.controller';
 export * from './customer-event-db.controller';
 export * from './allocation.controller';
 export * from './customer-sandbox-subscription-sandbox.controller';
+export * from './webhook.controller';

@@ -7,3 +7,4 @@ export * from './customer-event-sandbox.repository';
 export * from './customer-sandbox.repository';
 export * from './subscription-sandbox.repository';
 export * from './event-db-sandbox.repository';
+export * from './chargify-event.repository';
