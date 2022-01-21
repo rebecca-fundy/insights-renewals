@@ -77,20 +77,20 @@ export class WebhookController {
     console.log(subscription_id)
     console.log(customer_id)
     console.log(subdomain)
-    console.log(subscription["created_at"] || subscription["updated_at"])
+    console.log(payload["timestamp"] || subscription["created_at"] || subscription["updated_at"])
     console.log(subscription["previous_state"])
     console.log(subscription["state"])
     console.log(subdomain == "fundy-suite-sandbox")
 
     let eventDbData: Partial<EventDb> = {
-      id: chargifyEvent.id,
+      id: payload["event_id"],
       subscription_id: subscription["id"],
       customer_id: customer_id,
       key: chargifyEvent.event,
       created_at: payload["timestamp"] || subscription["updated_at"],
       previous_allocation: payload["previous_allocation"],
       new_allocation: payload["new_allocation"],
-      allocation_id: chargifyEvent.event == "component_allocation_change" ? chargifyEvent.id : null,
+      allocation_id: chargifyEvent.event == "component_allocation_change" ? payload["allocation"]["id"] : null,
       previous_subscription_state: subscription["previous_state"],
       new_subscription_state: subscription["state"]
     }
@@ -105,7 +105,7 @@ export class WebhookController {
 
     let customerData: Partial<Customer> = {
       id: customer_id,
-      created_at: new Date(subscription["customer"]["created_at"])
+      created_at: event == "signup_success" ? new Date(subscription["customer"]["created_at"]) : undefined
     }
 
     //[month lease live, month lease sandbox, year lease live, year lease sandbox]
