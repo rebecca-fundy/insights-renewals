@@ -36,6 +36,32 @@ export interface AllocationObject {
   }
 }
 
+export interface ComponentInfo {
+  component: {
+    id: number,
+    name: string,
+    kind: string,
+    unit_name: string,
+    enabled: boolean,
+    currency: string,
+    allocated_quantity: number,
+    pricing_scheme?: string,
+    component_id: number,
+    component_handle?: string,
+    subscription_id: number,
+    recurring: boolean,
+    archived_at?: Date,
+    price_point_id?: number,
+    price_point_handle?: string,
+    price_point_type?: string,
+    price_point_name?: string,
+    product_family_id: number,
+    product_family_handle: string,
+    created_at: Date,
+    updated_at: Date
+  }
+}
+
 
 export interface Event {
   // this is where you define the Node.js methods that will be
@@ -43,6 +69,7 @@ export interface Event {
   // json file.
   getEvents(page: number): Promise<EventObject[]>,
   getAllocations(subId: number, compId: number): Promise<AllocationObject[]>
+  listComponents(subId: number): Promise<ComponentInfo[]>
 }
 
 export class EventProvider implements Provider<Event> {

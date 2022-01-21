@@ -4,18 +4,12 @@ import {
   Filter,
   FilterExcludingWhere,
   repository,
-  Where,
+  Where
 } from '@loopback/repository';
 import {
-  post,
-  param,
-  get,
-  getModelSchemaRef,
-  patch,
-  put,
-  del,
-  requestBody,
-  response,
+  del, get,
+  getModelSchemaRef, param, patch, post, put, requestBody,
+  response
 } from '@loopback/rest';
 import {Subscription} from '../models';
 import {SubscriptionRepository} from '../repositories';
@@ -23,8 +17,8 @@ import {SubscriptionRepository} from '../repositories';
 export class SubscriptionController {
   constructor(
     @repository(SubscriptionRepository)
-    public subscriptionRepository : SubscriptionRepository,
-  ) {}
+    public subscriptionRepository: SubscriptionRepository,
+  ) { }
 
   @post('/subscriptions')
   @response(200, {
@@ -147,4 +141,22 @@ export class SubscriptionController {
   async deleteById(@param.path.number('id') id: number): Promise<void> {
     await this.subscriptionRepository.deleteById(id);
   }
+
+  //   @get('/subscriptions/{id}/customer', {
+  //     responses: {
+  //       '200': {
+  //         description: 'Customer belonging to Subscription',
+  //         content: {
+  //           'application/json': {
+  //             schema: {type: 'array', items: getModelSchemaRef(Customer)},
+  //           },
+  //         },
+  //       },
+  //     },
+  //   })
+  //   async getCustomer(
+  //     @param.path.number('id') id: typeof Subscription.prototype.id,
+  //   ): Promise<Customer> {
+  //     return this.subscriptionRepository.customerId(id);
+  //   }
 }

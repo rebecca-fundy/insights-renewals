@@ -1,4 +1,5 @@
-import {Entity, model, property} from '@loopback/repository';
+import {belongsTo, Entity, model, property} from '@loopback/repository';
+import {Customer} from './customer.model';
 
 @model()
 export class Subscription extends Entity {
@@ -8,12 +9,6 @@ export class Subscription extends Entity {
     generated: false,
   })
   id: number;
-
-  @property({
-    type: 'number',
-    generated: false,
-  })
-  customer_id: number;
 
   @property({
     type: 'number',
@@ -32,6 +27,9 @@ export class Subscription extends Entity {
     generated: false,
   })
   peOn: boolean;
+
+  @belongsTo(() => Customer, {name: 'customerId'})
+  customer_id: number;
 
   constructor(data?: Partial<Subscription>) {
     super(data);

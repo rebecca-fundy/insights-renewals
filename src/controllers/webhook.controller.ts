@@ -1,3 +1,4 @@
+import {inject} from '@loopback/core';
 import {
   Count,
   CountSchema,
@@ -10,8 +11,11 @@ import {
   del, get,
   getModelSchemaRef, param, patch, post, put, requestBody, response
 } from '@loopback/rest';
-import {ChargifyEvent, EventDb} from '../models';
-import {ChargifyEventRepository, EventDbRepository, EventDbSandboxRepository} from '../repositories';
+import {ChargifyEvent, Customer, EventDb, Subscription} from '../models';
+import {ChargifyEventRepository, CustomerRepository, CustomerSandboxRepository, EventDbRepository, EventDbSandboxRepository, SubscriptionRepository, SubscriptionSandboxRepository} from '../repositories';
+import {Event} from '../services';
+
+let isLive = process.env.CHARGIFY_ENV == "live";
 
 export class WebhookController {
   constructor(
@@ -21,6 +25,16 @@ export class WebhookController {
     public eventDbRepository: EventDbRepository,
     @repository(EventDbSandboxRepository)
     public eventDbSandboxRepository: EventDbSandboxRepository,
+    @repository(SubscriptionRepository)
+    public subscriptionRepository: SubscriptionRepository,
+    @repository(SubscriptionSandboxRepository)
+    public subscriptionSandboxRepository: SubscriptionSandboxRepository,
+    @repository(CustomerRepository)
+    public customerRepository: CustomerRepository,
+    @repository(CustomerSandboxRepository)
+    public customerSandboxRepository: CustomerSandboxRepository,
+    @inject('services.Event')
+    protected eventService: Event
   ) { }
 
   @post('/webhook')
@@ -39,25 +53,36 @@ export class WebhookController {
       },
     })
     chargifyEvent: any,
-  ): Promise<EventDb> {
+  ): Promise<EventDb | Subscription> {
     let payload = chargifyEvent.payload;
     let id = chargifyEvent.id;
     let event = chargifyEvent.event
     let subdomain = payload["site"]["subdomain"]
     let subscription = payload["subscription"]
-    let customer_id = subscription["customer"]["id"]
+    let subscription_id = subscription["id"];
+    let customer_id = 0;
+    if (event == "component_allocation_change") {
+      customer_id = isLive ?
+        (await this.subscriptionRepository.customerId(subscription_id)).id
+        : (await this.subscriptionSandboxRepository.customerSandboxId(subscription_id)).id
+    } else {
+      customer_id = subscription["customer"]["id"]
+    }
+    let product_id = subscription["product"]["id"]
+
     console.log(id)
     console.log(event);
     console.log(payload["previous_allocation"])
     console.log(payload["new_allocation"])
-    console.log(subscription["id"])
+    console.log(subscription_id)
+    console.log(customer_id)
     console.log(subdomain)
-    console.log(subscription["updated_at"])
+    console.log(subscription["created_at"] || subscription["updated_at"])
     console.log(subscription["previous_state"])
     console.log(subscription["state"])
     console.log(subdomain == "fundy-suite-sandbox")
 
-    let data: Partial<EventDb> = {
+    let eventDbData: Partial<EventDb> = {
       id: chargifyEvent.id,
       subscription_id: subscription["id"],
       customer_id: customer_id,
@@ -68,13 +93,54 @@ export class WebhookController {
       allocation_id: chargifyEvent.event == "component_allocation_change" ? chargifyEvent.id : null,
       previous_subscription_state: subscription["previous_state"],
       new_subscription_state: subscription["state"]
-
     }
 
+    let subscriptionData: Partial<Subscription> = {
+      id: subscription["id"],
+      created_at: subscription["created_at"],
+      product_id: product_id,
+      customer_id: customer_id,
+      // peOn: true
+    }
+
+    let customerData: Partial<Customer> = {
+      id: customer_id,
+      created_at: new Date(subscription["customer"]["created_at"])
+    }
+
+    //[month lease live, month lease sandbox, year lease live, year lease sandbox]
+    const leaseProductIds = [5874530, 5601362, 5135042, 5081978]
+    if (!leaseProductIds.includes(product_id)) {
+      subscriptionData.peOn = await this.eventService.listComponents(subscription_id)
+        .then(components => components.filter(component => component.component.name == "Fundy Pro Enhancements"))
+        .then(pEcomponent => pEcomponent[0].component.enabled)
+    }
+
+
     if (subdomain == "fundy-suite") {
-      return this.eventDbRepository.create(data)
+      if (event == "signup_success") {
+        try {
+          await this.customerRepository.create(customerData)
+        } catch (error) {
+          console.log(error.message)
+        } finally {
+          return this.subscriptionRepository.create(subscriptionData)
+        }
+      } else {
+        return this.eventDbRepository.create(eventDbData)
+      }
     } else {
-      return this.eventDbSandboxRepository.create(data);
+      if (event == "signup_success") {
+        try {
+          await this.customerSandboxRepository.create(customerData)
+        } catch (error) {
+          console.log(error.message)
+        } finally {
+          return this.subscriptionSandboxRepository.create(subscriptionData)
+        }
+      } else {
+        return this.eventDbSandboxRepository.create(eventDbData)
+      }
     }
   }
 

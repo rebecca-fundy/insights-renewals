@@ -30,11 +30,21 @@ const config = {
     {
       template: {
         method: 'GET',
-        url: 'https://${url}/subscriptions/{subId}/components/{compId}/allocations.json',
+        url: `https://${url}/subscriptions/{subId}/components/{compId}/allocations.json`,
       },
       functions:
       {
         getAllocations: ['subId', 'compId'],
+      }
+    },
+    {
+      template: {
+        method: 'GET',
+        url: `https://${url}/subscriptions/{subId}/components.json`,
+      },
+      functions:
+      {
+        listComponents: ['subId'],
       }
     },
 

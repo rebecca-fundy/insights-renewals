@@ -1,15 +1,11 @@
-import {model, property} from '@loopback/repository';
+import {model, property, belongsTo} from '@loopback/repository';
 import {Subscription} from '.';
+import {CustomerSandbox} from './customer-sandbox.model';
 
 @model()
 export class SubscriptionSandbox extends Subscription {
 
-  @property({
-    type: 'number',
-    id: true,
-    generated: false,
-    required: true
-  })
+  @belongsTo(() => CustomerSandbox, {name: 'customerSandboxId'})
   customer_id: number;
 
   constructor(data?: Partial<SubscriptionSandbox>) {
