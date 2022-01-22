@@ -84,6 +84,8 @@ export class EventController {
   ): Promise<EventDb[]> {    /* Storing historical event data */
     //Step 1: Fetch event data
     try {
+      let eventCount = (await this.count()).count;
+      if (eventCount != 0) {throw Error("historical events loaded")}
       let eventArrayFetch: EventObject[] = []; //initialize eventArray to empty array
       let j: number = 1; //Index for fetching and storing multiple pages of events
       while (j > 0) { //While the length of the fetched array is 200

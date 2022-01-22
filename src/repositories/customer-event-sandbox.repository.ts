@@ -12,5 +12,9 @@ export class CustomerEventSandboxRepository extends DefaultCrudRepository<
     @inject('datasources.db') dataSource: DbDataSource,
   ) {
     super(CustomerEventSandbox, dataSource);
+    console.log('cust-event-sandbox repo')
+    console.log('today: ' + new Date());
+    this.execute('TRUNCATE TABLE CustomerEventSandbox')
+      .then(async result => console.log((await this.count()).count));
   }
 }
