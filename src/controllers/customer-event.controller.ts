@@ -99,46 +99,31 @@ export class CustomerEventController {
     return this.customerEventRepository.count(where);
   }
 
-  @get('/customer-events')
-  @response(200, {
-    description: 'Array of CustomerEvent model instances',
-    content: {
-      'application/json': {
-        schema: {
-          type: 'array',
-          items: getModelSchemaRef(CustomerEvent, {includeRelations: true}),
-        },
-      },
-    },
-  })
-  async find(
-    @param.filter(CustomerEvent) filter?: Filter<CustomerEvent>,
-  ): Promise<CustomerEvent[]> {
-    console.log('chargify env live: ' + isLive)
+  async generateTable(): Promise<void> {
+
     let customerEventCount = isLive ? (await this.customerEventRepository.count()).count : (await this.customerEventSandboxRepository.count()).count;
 
     if (customerEventCount == 0) {
       //Setting of historical PE event data by customer
       let today = new Date();
-      console.log('debug1')
       //Grab array of customers and events; events ordered by ascending creation date.
 
-      let subscriptionArray = isLive ? (await this.subscriptionRepository.find()) : (await this.subscriptionSandboxRepository.find());
-      console.log('debug2')
-      const eventArray = isLive ? await this.eventDbRepository.find({order: ["subscription_id ASC", "created_at ASC"]}) : await this.eventDbSandboxRepository.find({order: ["subscription_id ASC", "created_at ASC"]});
-      console.log('debug3')
-      // const customerArray = (isLive ? (await this.customerRepository.find()) : (await this.customerSandboxRepository.find()))
-      // await this.customerRepository.find()
+      const subscriptionArray = await (isLive ? this.subscriptionRepository.find() : this.subscriptionSandboxRepository.find());
+      const eventArray = await (isLive ? this.eventDbRepository.find({order: ["subscription_id ASC", "created_at ASC"]}) : this.eventDbSandboxRepository.find({order: ["subscription_id ASC", "created_at ASC"]}));
+
       await (isLive ? (this.customerRepository.find()) : (this.customerSandboxRepository.find()))
         .then(async customerArray => {
-          console.log('customerArray.length = ' + customerArray.length);
-
           for (let i = 0; i < customerArray.length; i++) {
             let customer = customerArray[i]; //For each customer in the customer array...
             let customerEvents = eventArray.filter(event => event.customer_id == customer.id) //Filter the events array to events for this customer
             let products = subscriptionArray.filter(subscription => subscription.customer_id === customer.id).sort() //Make sure they have at least one subscription
             const custCreationDate = products.length == 0 ? new Date(customer.created_at) : new Date(products[0].created_at); //Set the customer creation date to the creation date of the first subscription. This will be the date that all the timepoints will be measured from. (If no subscriptions, it will be the customer creation date.)
             //Initialize data object for creating a customer-event item for this customer
+            let numSubscriptions = products.length;
+            let currentSubscription = products[numSubscriptions - 1]
+            let isActive = currentSubscription.state == "active" && currentSubscription.peOn;
+            let isTrialing = currentSubscription.state == "trialing" && currentSubscription.peOn;
+
             //Set up the timepoints for this customer.
             let signupDate = new Date(custCreationDate);
             let signup = new Date(signupDate.setDate(signupDate.getDate() + 1));
@@ -155,6 +140,8 @@ export class CustomerEventController {
               customer_id: customer.id,
               customer_created: customer.created_at,
               productType: productType,
+              isActive: isActive,
+              isTrialing: isTrialing
             }
 
             type TimeKey = "peOffAtSignup" | "peOffAt3" | "peOffAt15" | "peOffAt27" | "peOffAt39"
@@ -248,6 +235,40 @@ export class CustomerEventController {
           }
         })
     }
+  }
+  //Truncate cust-event table and recalculate
+  @get('/customer-events/refresh')
+  @response(200, {
+    description: 'CustomerEvent model count',
+    // content: {'application/json': {schema: CountSchema}},
+  })
+  async refresh(
+    @param.where(CustomerEvent) where?: Where<CustomerEvent>,
+  ): Promise<DropoffTable[]> {
+    let customerEventTable = isLive ? 'CustomerEvent' : 'CustomerEventSandbox'
+    console.log('hit dropoff')
+    await this.customerEventRepository.execute(`TRUNCATE TABLE ${customerEventTable}`)
+      .then(() => this.generateTable())
+    return this.findDropOffs();
+  }
+
+  @get('/customer-events')
+  @response(200, {
+    description: 'Array of CustomerEvent model instances',
+    content: {
+      'application/json': {
+        schema: {
+          type: 'array',
+          items: getModelSchemaRef(CustomerEvent, {includeRelations: true}),
+        },
+      },
+    },
+  })
+  async find(
+    @param.filter(CustomerEvent) filter?: Filter<CustomerEvent>,
+  ): Promise<CustomerEvent[]> {
+    console.log('chargify env live: ' + isLive)
+    await this.generateTable();
     return isLive ? this.customerEventRepository.find(filter) : this.customerEventSandboxRepository.find(filter);
   }
 
@@ -265,19 +286,16 @@ export class CustomerEventController {
   async findDropOffs(
     @param.filter(CustomerEvent) filter?: Filter<CustomerEvent>,
   ): Promise<DropoffTable[]> {
-    // ): Promise<DropoffTable> {
     let dropoffArray: DropoffTable[] = []
     //filter on product type = "non-lease", "month lease" or "year lease"
     //Pro Enhancement filters do not apply to lease products.
     //Need to make it more generic.
     const productTypes = ["non-lease", "year lease", "month lease"];
-    const tableTitles = ["PE dropoffs", "Year Lease", "Month Lease"]
+    const tableTitles = ["Pro Enhancements", "Year Lease", "Month Lease"]
     for (let i = 0; i < productTypes.length; i++) {
 
       let productFilter: Filter<CustomerEvent> = {"where": {"productType": `${productTypes[i]}`}}
 
-
-      // let totalCust = (await this.find(filter));
       let totalCust = (await this.find(productFilter));
 
       let signupDropCount = totalCust.filter(cust => cust.peOffAtSignup).length

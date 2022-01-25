@@ -23,6 +23,12 @@ export class Subscription extends Entity {
   created_at: Date;
 
   @property({
+    type: 'string',
+    generated: false,
+  })
+  state: string;
+
+  @property({
     type: 'number',
     generated: false,
   })

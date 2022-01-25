@@ -56,6 +56,16 @@ export class CustomerEvent extends Entity {
   })
   productType: string;
 
+  @property({
+    type: 'boolean',
+  })
+  isActive: boolean;
+
+  @property({
+    type: 'boolean',
+  })
+  isTrialing: boolean;
+
 
   constructor(data?: Partial<CustomerEvent>) {
     super(data);
