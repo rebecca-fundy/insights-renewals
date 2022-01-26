@@ -119,8 +119,8 @@ export class WebhookController {
 
     //[month lease live, month lease sandbox, year lease live, year lease sandbox]
     const leaseProductIds = [5874530, 5601362, 5135042, 5081978]
-    //For signup_success and subcription_state_change events, set/update peOn for non-lease products.
-    if (!leaseProductIds.includes(product_id)) {
+    //For signup_success, set peOn for non-lease products.
+    if (!leaseProductIds.includes(product_id) && event == "signup_success") {
       newSubscriptionData.peOn = await this.eventService.listComponents(subscription_id)
         .then(components => components.filter(component => component.component.name == "Fundy Pro Enhancements"))
         .then(pEcomponent => pEcomponent[0].component.enabled)
