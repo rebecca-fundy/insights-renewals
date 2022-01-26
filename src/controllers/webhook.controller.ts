@@ -136,7 +136,7 @@ export class WebhookController {
         console.log(error)
       }
     }
-
+    //For allocation changes, the peOn field in the subscription repo needs to be updated.
     if (event == "component_allocation_change") {
       try {
         subdomain == "fundy-suite"
