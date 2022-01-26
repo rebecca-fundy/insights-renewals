@@ -59,12 +59,12 @@ export class CustomerEvent extends Entity {
   @property({
     type: 'boolean',
   })
-  isActive: boolean;
+  isActive?: boolean;
 
   @property({
     type: 'boolean',
   })
-  isTrialing: boolean;
+  isTrialing?: boolean;
 
 
   constructor(data?: Partial<CustomerEvent>) {

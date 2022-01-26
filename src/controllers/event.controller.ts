@@ -63,7 +63,8 @@ export class EventController {
   async count(
     @param.where(EventDb) where?: Where<EventDb>,
   ): Promise<Count> {
-    return this.eventDbRepository.count(where);
+    // return this.eventDbRepository.count(where);
+    return process.env.CHARGIFY_ENV == "live" ? this.eventDbRepository.count(where) : this.eventDbSandboxRepository.count(where);
   }
 
   //Using /event GET endpint to load historical events

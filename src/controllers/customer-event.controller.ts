@@ -121,8 +121,8 @@ export class CustomerEventController {
             //Initialize data object for creating a customer-event item for this customer
             let numSubscriptions = products.length;
             let currentSubscription = products[numSubscriptions - 1]
-            let isActive = currentSubscription.state == "active" && currentSubscription.peOn;
-            let isTrialing = currentSubscription.state == "trialing" && currentSubscription.peOn;
+            let isActive = currentSubscription ? (currentSubscription.state == "active" && currentSubscription.peOn) : undefined;
+            let isTrialing = currentSubscription ? (currentSubscription.state == "trialing" && currentSubscription.peOn) : undefined;
 
             //Set up the timepoints for this customer.
             let signupDate = new Date(custCreationDate);
