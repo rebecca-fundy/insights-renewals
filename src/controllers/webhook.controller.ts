@@ -95,12 +95,21 @@ export class WebhookController {
       new_subscription_state: subscription["state"]
     }
 
-    let subscriptionData: Partial<Subscription> = {
+    let newSubscriptionData: Partial<Subscription> = {
       id: subscription["id"],
       created_at: subscription["created_at"],
       product_id: product_id,
       customer_id: customer_id,
+      state: subscription["state"]
       // peOn: true
+    }
+
+    let subscriptionStateChangeData: Partial<Subscription> = {
+      state: subscription["state"]
+    }
+
+    let togglePeData: Partial<Subscription> = {
+      peOn: payload["new_allocation"]
     }
 
     let customerData: Partial<Customer> = {
@@ -110,10 +119,33 @@ export class WebhookController {
 
     //[month lease live, month lease sandbox, year lease live, year lease sandbox]
     const leaseProductIds = [5874530, 5601362, 5135042, 5081978]
+    //For signup_success and subcription_state_change events, set/update peOn for non-lease products.
     if (!leaseProductIds.includes(product_id)) {
-      subscriptionData.peOn = await this.eventService.listComponents(subscription_id)
+      newSubscriptionData.peOn = await this.eventService.listComponents(subscription_id)
         .then(components => components.filter(component => component.component.name == "Fundy Pro Enhancements"))
         .then(pEcomponent => pEcomponent[0].component.enabled)
+    }
+    //For subscription state changes, there will already be a subscription, so it will be updated.
+    if (event == "subscription_state_change") {
+      try {
+        subdomain == "fundy-suite"
+          ? await this.subscriptionRepository.updateById(subscription_id, subscriptionStateChangeData)
+          : await this.subscriptionSandboxRepository.updateById(subscription_id, subscriptionStateChangeData)
+            .then(result => console.log('result: ' + result))
+      } catch (error) {
+        console.log(error)
+      }
+    }
+
+    if (event == "component_allocation_change") {
+      try {
+        subdomain == "fundy-suite"
+          ? await this.subscriptionRepository.updateById(subscription_id, togglePeData)
+          : await this.subscriptionSandboxRepository.updateById(subscription_id, togglePeData)
+            .then(result => console.log('result: ' + result))
+      } catch (error) {
+        console.log(error)
+      }
     }
 
 
@@ -124,7 +156,7 @@ export class WebhookController {
         } catch (error) {
           console.log(error.message)
         } finally {
-          return this.subscriptionRepository.create(subscriptionData)
+          return this.subscriptionRepository.create(newSubscriptionData)
         }
       } else {
         return this.eventDbRepository.create(eventDbData)
@@ -136,7 +168,7 @@ export class WebhookController {
         } catch (error) {
           console.log(error.message)
         } finally {
-          return this.subscriptionSandboxRepository.create(subscriptionData)
+          return this.subscriptionSandboxRepository.create(newSubscriptionData)
         }
       } else {
         return this.eventDbSandboxRepository.create(eventDbData)
