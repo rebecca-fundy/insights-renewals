@@ -344,27 +344,27 @@ export class CustomerEventController {
         noOptIn: {
           name: "No opt in",
           userCount: dropoffAtSignup,
-          countOnly: true
+          countOnly: false
         },
         dropoff3m: {
           name: "dropoff 3m",
           userCount: dropoffAt3m,
-          countOnly: true,
+          countOnly: false,
         },
         dropoff1y: {
           name: "dropoff 1y",
           userCount: dropoffAt1y,
-          countOnly: true
+          countOnly: false
         },
         dropoff2y: {
           name: "dropoff 2y",
           userCount: dropoffAt2y,
-          countOnly: true
+          countOnly: false
         },
         dropoff3y: {
           name: "dropoff 3y",
           userCount: dropoffAt3y,
-          countOnly: true
+          countOnly: false
         },
       }
     }
