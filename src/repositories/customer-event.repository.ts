@@ -13,7 +13,7 @@ export interface DropoffRow {
 
 export interface DropoffTable {
   title: string,
-  totalCustomers?: DropoffRow,
+  totalCusts?: DropoffRow,
   numTrialing?: DropoffRow,
   numActive?: DropoffRow,
   noOptIn?: DropoffRow,

@@ -13,7 +13,7 @@ import {
   response
 } from '@loopback/rest';
 import {CustomerEvent, EventDb, Subscription, SubscriptionRelations} from '../models';
-import {CustomerEventRepository, CustomerEventSandboxRepository, CustomerRepository, CustomerSandboxRepository, DropoffTable, EventDbRepository, EventDbSandboxRepository, SubscriptionRepository, SubscriptionSandboxRepository} from '../repositories';
+import {CustomerEventRepository, CustomerEventSandboxRepository, CustomerRepository, CustomerSandboxRepository, DropoffRow, DropoffTable, EventDbRepository, EventDbSandboxRepository, SubscriptionRepository, SubscriptionSandboxRepository} from '../repositories';
 
 let isLive: boolean = process.env.CHARGIFY_ENV == "live";
 
@@ -214,10 +214,10 @@ export class CustomerEventController {
             //Loop through event array and update the valid timepoints with the event data.
             customerEvents.forEach(event => {
 
-              if (event.created_at <= signup) {
+              if (event.created_at <= signup && productType == "non-lease") {
                 setTimepoint(event, 'signup')
               }
-              else if (event.created_at <= threeMonths) {
+              else if (event.created_at <= threeMonths && productType == "non-lease") {
                 setTimepoint(event, 'threeMonths')
               }
               else if (event.created_at <= oneYear) {
@@ -296,7 +296,7 @@ export class CustomerEventController {
     const productTypes = ["non-lease", "year lease", "month lease"];
     const tableTitles = ["Pro Enhancements", "Year Lease", "Month Lease"]
     for (let i = 0; i < productTypes.length; i++) {
-
+      let productType: string = productTypes[i]
       let productFilter: Filter<CustomerEvent> = {"where": {"productType": `${productTypes[i]}`}}
 
       let totalCust = (await this.find(productFilter));
@@ -306,13 +306,19 @@ export class CustomerEventController {
       let totalActive = totalCust.filter(cust => cust.isActive).length
       let totalTrialing = totalCust.filter(cust => cust.isTrialing).length
 
-      let signupDropCount = totalCust.filter(cust => cust.peOffAtSignup).length
-      let signupFalseCount = totalCust.filter(cust => cust.peOffAtSignup === false).length
-      let dropoffAtSignup = Math.round((signupDropCount / (signupFalseCount + signupDropCount)) * 100)
+      let dropoffAtSignup = undefined;
+      let dropoffAt3m = undefined;
 
-      let threeMthDropCount = totalCust.filter(cust => cust.peOffAt3).length
-      let threeMthFalseCount = totalCust.filter(cust => cust.peOffAt3 === false).length
-      let dropoffAt3m = Math.round((threeMthDropCount / (threeMthFalseCount + threeMthDropCount)) * 100);
+      if (productType == "non-lease") {
+
+        let signupDropCount = totalCust.filter(cust => cust.peOffAtSignup).length
+        let signupFalseCount = totalCust.filter(cust => cust.peOffAtSignup === false).length
+        dropoffAtSignup = Math.round((signupDropCount / (signupFalseCount + signupDropCount)) * 100)
+
+        let threeMthDropCount = totalCust.filter(cust => cust.peOffAt3).length
+        let threeMthFalseCount = totalCust.filter(cust => cust.peOffAt3 === false).length
+        dropoffAt3m = Math.round((threeMthDropCount / (threeMthFalseCount + threeMthDropCount)) * 100);
+      }
 
       let oneYrDropCount = totalCust.filter(cust => cust.peOffAt15).length
       let oneYrFalseCount = totalCust.filter(cust => cust.peOffAt15 === false).length
@@ -326,48 +332,70 @@ export class CustomerEventController {
       let threeYrFalseCount = totalCust.filter(cust => cust.peOffAt39 === false).length
       let dropoffAt3y = Math.round((threeYrDropCount / (threeYrFalseCount + threeYrDropCount)) * 100);
 
+      let totalCusts: DropoffRow = {
+        name: "Total customers",
+        userCount: totalCustomers,
+        countOnly: true
+      }
+
+      let numActive: DropoffRow = {
+        name: "Active",
+        userCount: totalActive,
+        countOnly: true
+      }
+
+      let numTrialing: DropoffRow = {
+        name: "Trialing",
+        userCount: totalTrialing,
+        countOnly: true
+      }
+
+      let noOptIn: DropoffRow = {
+        name: "No opt in",
+        userCount: dropoffAtSignup,
+        countOnly: false
+      }
+
+      let dropoff3m: DropoffRow = {
+        name: "dropoff 3m",
+        userCount: dropoffAt3m,
+        countOnly: false,
+      }
+
+      let dropoff1y: DropoffRow = {
+        name: "dropoff 1y",
+        userCount: dropoffAt1y,
+        countOnly: false
+      }
+
+      let dropoff2y: DropoffRow = {
+        name: "dropoff 2y",
+        userCount: dropoffAt2y,
+        countOnly: false
+      }
+
+      let dropoff3y: DropoffRow = {
+        name: "dropoff 3y",
+        userCount: dropoffAt3y,
+        countOnly: false
+      }
+
       dropoffArray[i] = {
         title: tableTitles[i],
-        totalCustomers: {
-          name: "Total customers",
-          userCount: totalCustomers,
-          countOnly: true
-        },
-        numActive: {
-          name: "Active",
-          userCount: totalActive,
-          countOnly: true
-        },
-        numTrialing: {
-          name: "Trialing",
-          userCount: totalTrialing,
-          countOnly: true
-        },
-        noOptIn: {
-          name: "No opt in",
-          userCount: dropoffAtSignup,
-          countOnly: false
-        },
-        dropoff3m: {
-          name: "dropoff 3m",
-          userCount: dropoffAt3m,
-          countOnly: false,
-        },
-        dropoff1y: {
-          name: "dropoff 1y",
-          userCount: dropoffAt1y,
-          countOnly: false
-        },
-        dropoff2y: {
-          name: "dropoff 2y",
-          userCount: dropoffAt2y,
-          countOnly: false
-        },
-        dropoff3y: {
-          name: "dropoff 3y",
-          userCount: dropoffAt3y,
-          countOnly: false
-        },
+        totalCusts,
+        numActive,
+        // numTrialing,
+        // noOptIn,
+        // dropoff3m,
+        dropoff1y,
+        dropoff2y,
+        dropoff3y,
+      }
+
+      if (productType == "non-lease") {
+        dropoffArray[i].numTrialing = numTrialing;
+        dropoffArray[i].noOptIn = noOptIn;
+        dropoffArray[i].dropoff3m = dropoff3m;
       }
     }
     return dropoffArray;
