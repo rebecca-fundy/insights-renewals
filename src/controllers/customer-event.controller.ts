@@ -116,18 +116,27 @@ export class CustomerEventController {
           for (let i = 0; i < customerArray.length; i++) {
             let customer = customerArray[i]; //For each customer in the customer array...
             let customerEvents = eventArray.filter(event => event.customer_id == customer.id) //Filter the events array to events for this customer
-            let products = subscriptionArray.filter(subscription => subscription.customer_id === customer.id).sort() //Make sure they have at least one subscription
+            let products = subscriptionArray.filter(subscription => subscription.customer_id === customer.id).sort() //Make sure customer has at least one subscription
             const custCreationDate = products.length == 0 ? new Date(customer.created_at) : new Date(products[0].created_at); //Set the customer creation date to the creation date of the first subscription. This will be the date that all the timepoints will be measured from. (If no subscriptions, it will be the customer creation date.)
-            //Initialize data object for creating a customer-event item for this customer
+
+            //Set product type for this customer.
             let productType = setProductType(products);
+
+            //Determine whether this customer's most recent subscription is active, trialing or neither
             let numSubscriptions = products.length;
             let currentSubscription = products[numSubscriptions - 1]
+
+            //For non-lease customers, "active" or "trialing" means most recent subscription is in an active state *and* PE is turned on.
             let isActive = currentSubscription ? (currentSubscription.state == "active" && currentSubscription.peOn) : undefined;
             let isTrialing = currentSubscription ? (currentSubscription.state == "trialing" && currentSubscription.peOn) : undefined;
+
+            //For lease customers, "active" means the current subscription is in an active state.
+            //There is no trial period for lease customers.
             if (productType == "year lease" || productType == "month lease") {
               isActive = currentSubscription ? currentSubscription.state == "active" : undefined;
               isTrialing = undefined
             }
+
             //Set up the timepoints for this customer.
             let signupDate = new Date(custCreationDate);
             let signup = new Date(signupDate.setDate(signupDate.getDate() + 1));
@@ -136,9 +145,8 @@ export class CustomerEventController {
             let oneYear = addMonths(signupPlus3wks, 15)
             let twoYears = addMonths(signupPlus3wks, 27)
             let threeYears = addMonths(signupPlus3wks, 39)
-            //Set product type for this customer.
 
-
+            //Initialize data object for creating a customer-event item for this customer
             let data: Partial<CustomerEvent> = {
               customer_id: customer.id,
               customer_created: customer.created_at,
@@ -189,6 +197,11 @@ export class CustomerEventController {
             if (data.peOffAtSignup === undefined && products.length != 0) {
               if (data.productType != "non-lease") { //Lease products are turned on at signup by definition, so they will never be off at signup
                 data.peOffAtSignup = false
+                //For the year lease, initialize to an entire year on.
+                if (data.productType == "year lease") {
+                  data.peOffAt3 = false;
+                  data.peOffAt15 = false;
+                }
               } else if (!allocationEvents) { //No allocation events for this customer in their first subscription means signup allocation same as final allocation in first subscription
                 data.peOffAtSignup = !products[0].peOn
               } else if (allocationEvents) { //If there are any allocation events in the first subscription, we can use the previous allocation of the first one to deduce the status at signup
