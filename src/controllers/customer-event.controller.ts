@@ -300,6 +300,8 @@ export class CustomerEventController {
       let productFilter: Filter<CustomerEvent> = {"where": {"productType": `${productTypes[i]}`}}
 
       let totalCust = (await this.find(productFilter));
+      let totalCustomers = totalCust.length;
+      console.log(productTypes[i], totalCustomers)
 
       let totalActive = totalCust.filter(cust => cust.isActive).length
       let totalTrialing = totalCust.filter(cust => cust.isTrialing).length
@@ -328,7 +330,7 @@ export class CustomerEventController {
         title: tableTitles[i],
         totalCustomers: {
           name: "Total customers",
-          userCount: totalCust.length,
+          userCount: totalCustomers,
           countOnly: true
         },
         numActive: {
