@@ -119,11 +119,15 @@ export class CustomerEventController {
             let products = subscriptionArray.filter(subscription => subscription.customer_id === customer.id).sort() //Make sure they have at least one subscription
             const custCreationDate = products.length == 0 ? new Date(customer.created_at) : new Date(products[0].created_at); //Set the customer creation date to the creation date of the first subscription. This will be the date that all the timepoints will be measured from. (If no subscriptions, it will be the customer creation date.)
             //Initialize data object for creating a customer-event item for this customer
+            let productType = setProductType(products);
             let numSubscriptions = products.length;
             let currentSubscription = products[numSubscriptions - 1]
             let isActive = currentSubscription ? (currentSubscription.state == "active" && currentSubscription.peOn) : undefined;
             let isTrialing = currentSubscription ? (currentSubscription.state == "trialing" && currentSubscription.peOn) : undefined;
-
+            if (productType == "year lease" || productType == "month lease") {
+              isActive = currentSubscription ? currentSubscription.state == "active" : undefined;
+              isTrialing = undefined
+            }
             //Set up the timepoints for this customer.
             let signupDate = new Date(custCreationDate);
             let signup = new Date(signupDate.setDate(signupDate.getDate() + 1));
@@ -133,7 +137,6 @@ export class CustomerEventController {
             let twoYears = addMonths(signupPlus3wks, 27)
             let threeYears = addMonths(signupPlus3wks, 39)
             //Set product type for this customer.
-            let productType = setProductType(products);
 
 
             let data: Partial<CustomerEvent> = {
@@ -298,6 +301,9 @@ export class CustomerEventController {
 
       let totalCust = (await this.find(productFilter));
 
+      let totalActive = totalCust.filter(cust => cust.isActive).length
+      let totalTrialing = totalCust.filter(cust => cust.isTrialing).length
+
       let signupDropCount = totalCust.filter(cust => cust.peOffAtSignup).length
       let signupFalseCount = totalCust.filter(cust => cust.peOffAtSignup === false).length
       let dropoffAtSignup = Math.round((signupDropCount / (signupFalseCount + signupDropCount)) * 100)
@@ -320,6 +326,21 @@ export class CustomerEventController {
 
       dropoffArray[i] = {
         title: tableTitles[i],
+        totalCustomers: {
+          name: "Total customers",
+          userCount: totalCust.length,
+          countOnly: true
+        },
+        numActive: {
+          name: "Active",
+          userCount: totalActive,
+          countOnly: true
+        },
+        numTrialing: {
+          name: "Trialing",
+          userCount: totalTrialing,
+          countOnly: true
+        },
         noOptIn: {
           name: "No opt in",
           userCount: dropoffAtSignup,
