@@ -17,7 +17,12 @@ export interface DropoffTable {
   numTrialing?: DropoffRow,
   numActive?: DropoffRow,
   noOptIn?: DropoffRow,
+  dropoff1m?: DropoffRow,
+  dropoff2m?: DropoffRow,
   dropoff3m?: DropoffRow,
+  dropoff4m?: DropoffRow,
+  dropoff5m?: DropoffRow,
+  dropoff6m?: DropoffRow,
   dropoff1y: DropoffRow,
   dropoff2y: DropoffRow,
   dropoff3y: DropoffRow

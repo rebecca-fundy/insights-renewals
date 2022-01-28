@@ -141,7 +141,12 @@ export class CustomerEventController {
             let signupDate = new Date(custCreationDate);
             let signup = new Date(signupDate.setDate(signupDate.getDate() + 1));
             let signupPlus3wks = new Date(signupDate.setDate(signupDate.getDate() + 20)); //Already added one day for signup
+            let oneMonth = addMonths(signupPlus3wks, 1)
+            let twoMonths = addMonths(signupPlus3wks, 2)
             let threeMonths = addMonths(signupPlus3wks, 3)
+            let fourMonths = addMonths(signupPlus3wks, 4)
+            let fiveMonths = addMonths(signupPlus3wks, 5)
+            let sixMonths = addMonths(signupPlus3wks, 6)
             let oneYear = addMonths(signupPlus3wks, 15)
             let twoYears = addMonths(signupPlus3wks, 27)
             let threeYears = addMonths(signupPlus3wks, 39)
@@ -156,10 +161,16 @@ export class CustomerEventController {
             }
 
             type TimeKey = "peOffAtSignup" | "peOffAt3" | "peOffAt15" | "peOffAt27" | "peOffAt39"
+            type TimeKeyMonthly = "peOffAt1" | "peOffAt2" | "peOffAt3" | "peOffAt4" | "peOffAt5" | "peOffAt6"
 
             let timepoints: Date[] = [signup, threeMonths, oneYear, twoYears, threeYears];
+            let timepointsMonthly: Date[] = [oneMonth, twoMonths, threeMonths, fourMonths, fiveMonths, sixMonths];
+
             const timepointStrs: string[] = ['signup', 'threeMonths', 'oneYear', 'twoYears', 'threeYears'];
+            const timepointStrsMonthly: string[] = ['oneMonth', 'twoMonths', 'threeMonths', 'fourMonths', 'fiveMonths', 'sixMonths'];
+
             const timepointKeys: TimeKey[] = ['peOffAtSignup', 'peOffAt3', 'peOffAt15', 'peOffAt27', 'peOffAt39']
+            const timepointKeysMonthly: TimeKeyMonthly[] = ['peOffAt1', 'peOffAt2', 'peOffAt3', 'peOffAt4', 'peOffAt5', 'peOffAt6']
 
             function getTimepointKey(timePoint: string): TimeKey {
               return timepointKeys[timepointStrs.indexOf(timePoint)]
@@ -201,6 +212,10 @@ export class CustomerEventController {
                 if (data.productType == "year lease") {
                   data.peOffAt3 = false;
                   data.peOffAt15 = false;
+                }
+                //For the month lease, initialize to one month on.
+                if (data.productType == "month lease") {
+                  data.peOffAt1 = false;
                 }
               } else if (!allocationEvents) { //No allocation events for this customer in their first subscription means signup allocation same as final allocation in first subscription
                 data.peOffAtSignup = !products[0].peOn

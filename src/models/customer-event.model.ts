@@ -34,7 +34,32 @@ export class CustomerEvent extends Entity {
   @property({
     type: 'boolean',
   })
+  peOffAt1?: boolean;
+
+  @property({
+    type: 'boolean',
+  })
+  peOffAt2?: boolean;
+
+  @property({
+    type: 'boolean',
+  })
   peOffAt3?: boolean;
+
+  @property({
+    type: 'boolean',
+  })
+  peOffAt4?: boolean;
+
+  @property({
+    type: 'boolean',
+  })
+  peOffAt5?: boolean;
+
+  @property({
+    type: 'boolean',
+  })
+  peOffAt6?: boolean;
 
   @property({
     type: 'boolean',
