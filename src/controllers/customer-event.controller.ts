@@ -99,8 +99,8 @@ export class CustomerEventController {
     return this.customerEventRepository.count(where);
   }
 
-  async generateTable(): Promise<void> {
 
+  async generateTable(): Promise<void> {
     let customerEventCount = isLive ? (await this.customerEventRepository.count()).count : (await this.customerEventSandboxRepository.count()).count;
 
     if (customerEventCount == 0) {
@@ -116,7 +116,8 @@ export class CustomerEventController {
           for (let i = 0; i < customerArray.length; i++) {
             let customer = customerArray[i]; //For each customer in the customer array...
             let customerEvents = eventArray.filter(event => event.customer_id == customer.id) //Filter the events array to events for this customer
-            let products = subscriptionArray.filter(subscription => subscription.customer_id === customer.id).sort() //Make sure customer has at least one subscription
+            let products = subscriptionArray.filter(subscription => subscription.customer_id === customer.id).sort() //List customer subscriptions oldest to newest
+            let hasProduct = products.length
             const custCreationDate = products.length == 0 ? new Date(customer.created_at) : new Date(products[0].created_at); //Set the customer creation date to the creation date of the first subscription. This will be the date that all the timepoints will be measured from. (If no subscriptions, it will be the customer creation date.)
 
             //Set product type for this customer.
@@ -161,25 +162,27 @@ export class CustomerEventController {
             }
 
             type TimeKey = "peOffAtSignup" | "peOffAt3" | "peOffAt15" | "peOffAt27" | "peOffAt39"
-            type TimeKeyMonthly = "peOffAt1" | "peOffAt2" | "peOffAt3" | "peOffAt4" | "peOffAt5" | "peOffAt6"
+            type TimeKeyMonthly = "peOffAtSignup" | "peOffAt1" | "peOffAt2" | "peOffAt3" | "peOffAt4" | "peOffAt5" | "peOffAt6" | "peOffAt15" | "peOffAt27" | "peOffAt39"
 
-            let timepoints: Date[] = [signup, threeMonths, oneYear, twoYears, threeYears];
-            let timepointsMonthly: Date[] = [oneMonth, twoMonths, threeMonths, fourMonths, fiveMonths, sixMonths];
+            let timepointsNonLease: Date[] = [signup, threeMonths, oneYear, twoYears, threeYears];
+
+            let timepointsMonthly: Date[] = [signup, oneMonth, twoMonths, threeMonths, fourMonths, fiveMonths, sixMonths, oneYear, twoYears, threeYears];
 
             const timepointStrs: string[] = ['signup', 'threeMonths', 'oneYear', 'twoYears', 'threeYears'];
-            const timepointStrsMonthly: string[] = ['oneMonth', 'twoMonths', 'threeMonths', 'fourMonths', 'fiveMonths', 'sixMonths'];
+            const timepointStrsMonthly: string[] = ['signup', 'oneMonth', 'twoMonths', 'threeMonths', 'fourMonths', 'fiveMonths', 'sixMonths', 'oneYear', 'twoYears', 'threeYears'];
 
             const timepointKeys: TimeKey[] = ['peOffAtSignup', 'peOffAt3', 'peOffAt15', 'peOffAt27', 'peOffAt39']
-            const timepointKeysMonthly: TimeKeyMonthly[] = ['peOffAt1', 'peOffAt2', 'peOffAt3', 'peOffAt4', 'peOffAt5', 'peOffAt6']
 
-            function getTimepointKey(timePoint: string): TimeKey {
-              return timepointKeys[timepointStrs.indexOf(timePoint)]
+            const timepointKeysMonthly: TimeKeyMonthly[] = ['peOffAtSignup', 'peOffAt1', 'peOffAt2', 'peOffAt3', 'peOffAt4', 'peOffAt5', 'peOffAt6', 'peOffAt15', 'peOffAt27', 'peOffAt39']
+
+            function getTimepointKey(timePoint: string): TimeKey | TimeKeyMonthly {
+              return productType == "month lease" ? timepointKeysMonthly[timepointStrsMonthly.indexOf(timePoint)] : timepointKeys[timepointStrs.indexOf(timePoint)]
             }
 
 
             function setTimepoint(event: EventDb, timePoint: string): void {
 
-              let timePointKey: TimeKey = getTimepointKey(timePoint)
+              let timePointKey: TimeKey | TimeKeyMonthly = getTimepointKey(timePoint)
 
               if (event.previous_allocation == 1 && event.new_allocation == 0 && !peAlreadyOff) {
                 data[timePointKey] = true
@@ -190,6 +193,7 @@ export class CustomerEventController {
                 peStatus = "on"
                 peAlreadyOff = false
               } else if (event.new_subscription_state == "canceled" && !peAlreadyOff) {
+                if (productType == "month lease") {console.log(timePoint, timePointKey)}
                 data[timePointKey] = true
                 peAlreadyOff = true
               } else if (event.new_subscription_state == "active" && (peStatus == "on" || (data.productType !== "non-lease"))) {
@@ -227,8 +231,9 @@ export class CustomerEventController {
             }
 
             //Initialize other valid (relative to time elapsed since first signup) timepoints
+            let timepoints = productType == "month lease" ? timepointsMonthly : timepointsNonLease
             for (let i = 1; i < timepoints.length; i++) { //Start at three months (index = 1 instead of 0) because we've already initialized signup timepoint.
-              let timepointStr = timepointStrs[i];
+              let timepointStr = productType == "month lease" ? timepointStrsMonthly[i] : timepointStrs[i];
               let timeKey = getTimepointKey(timepointStr);
               if (today > timepoints[i] && data[timeKey] === undefined) {
                 data[timeKey] = false
@@ -239,14 +244,31 @@ export class CustomerEventController {
             let peAlreadyOff = data.peOffAtSignup;
             let peStatus = data.peOffAtSignup ? "off" : "on";
 
+
             //Loop through event array and update the valid timepoints with the event data.
             customerEvents.forEach(event => {
 
               if (event.created_at <= signup && productType == "non-lease") {
                 setTimepoint(event, 'signup')
               }
-              else if (event.created_at <= threeMonths && productType == "non-lease") {
+              else if (event.created_at <= oneMonth && productType == "month lease") {
+                setTimepoint(event, 'oneMonth');
+                console.log(event.id, data)
+              }
+              else if (event.created_at <= twoMonths && productType == "month lease") {
+                setTimepoint(event, 'twoMonths')
+              }
+              else if (event.created_at <= threeMonths && (productType == "non-lease" || productType == "month lease")) {
                 setTimepoint(event, 'threeMonths')
+              }
+              else if (event.created_at <= fourMonths && productType == "month lease") {
+                setTimepoint(event, 'fourMonths')
+              }
+              else if (event.created_at <= fiveMonths && productType == "month lease") {
+                setTimepoint(event, 'fiveMonths')
+              }
+              else if (event.created_at <= sixMonths && productType == "month lease") {
+                setTimepoint(event, 'sixMonths')
               }
               else if (event.created_at <= oneYear) {
                 setTimepoint(event, 'oneYear')
@@ -257,11 +279,14 @@ export class CustomerEventController {
               else if (event.created_at <= threeYears) {
                 setTimepoint(event, 'threeYears')
               }
+
             })
-            if (isLive) {
-              await this.customerEventRepository.create(data)
-            } else {
-              await this.customerEventSandboxRepository.create(data)
+            if (hasProduct) {
+              if (isLive) {
+                await this.customerEventRepository.create(data)
+              } else {
+                await this.customerEventSandboxRepository.create(data)
+              }
             }
           }
         })
@@ -425,6 +450,8 @@ export class CustomerEventController {
         dropoffArray[i].noOptIn = noOptIn;
         dropoffArray[i].dropoff3m = dropoff3m;
       }
+
+
     }
     return dropoffArray;
     // return dropoffArray[0];
