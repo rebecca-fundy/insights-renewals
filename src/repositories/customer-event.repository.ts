@@ -23,9 +23,9 @@ export interface DropoffTable {
   dropoff4m?: DropoffRow,
   dropoff5m?: DropoffRow,
   dropoff6m?: DropoffRow,
-  dropoff1y: DropoffRow,
-  dropoff2y: DropoffRow,
-  dropoff3y: DropoffRow
+  dropoff1y?: DropoffRow,
+  dropoff2y?: DropoffRow,
+  dropoff3y?: DropoffRow
 }
 
 

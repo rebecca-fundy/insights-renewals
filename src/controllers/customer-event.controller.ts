@@ -18,16 +18,13 @@ import {CustomerEventRepository, CustomerEventSandboxRepository, CustomerReposit
 let isLive: boolean = process.env.CHARGIFY_ENV == "live";
 
 function addMonths(date: Date, months: number, i?: number): Date {
-  let date2 = new Date(date)
+  let date2 = new Date(date) //Prevent overwrite of date parameter
   let d = date2.getDate();
-
   date2.setMonth(date2.getMonth() + +months); //gets month from parameter, adds months param, then calls setMonth
-
   //if the day of the month is not equal to the original after adding the month then reset the day of the month to the last day of the previous month.
   if (date2.getDate() != d) {
     date2.setDate(0);
   }
-
   return date2;
 }
 
@@ -46,6 +43,21 @@ function setProductType(products: (Subscription & SubscriptionRelations)[]): str
   }
   return productType;
 }
+
+type RowCountKey = "totalCusts" | "numTrialing" | "numActive"
+type TimeKey = "peOffAtSignup" | "peOffAt3" | "peOffAt15" | "peOffAt27" | "peOffAt39"
+type TimeKeyMonthly = "peOffAt1" | "peOffAt2" | "peOffAt3" | "peOffAt4" | "peOffAt5" | "peOffAt6" | 'peOffAt15' | 'peOffAt27' | 'peOffAt39'
+// type TimeKeyMonthly = "peOffAtSignup" | "peOffAt1" | "peOffAt2" | "peOffAt3" | "peOffAt4" | "peOffAt5" | "peOffAt6" | 'peOffAt15' | 'peOffAt27' | 'peOffAt39'
+
+const rowCountStrs: string[] = ["total", "trialing", "active"]
+const timepointStrs: string[] = ['signup', 'threeMonths', 'oneYear', 'twoYears', 'threeYears'];
+// const timepointStrsMonthly: string[] = ['signup', 'oneMonth', 'twoMonths', 'threeMonths', 'fourMonths', 'fiveMonths', 'sixMonths', 'oneYear', 'twoYears', 'threeYears'];
+const timepointStrsMonthly: string[] = ['oneMonth', 'twoMonths', 'threeMonths', 'fourMonths', 'fiveMonths', 'sixMonths', 'oneYear', 'twoYears', 'threeYears'];
+
+const rowCountKeys: RowCountKey[] = ['totalCusts', 'numTrialing', 'numActive']
+const timepointKeys: TimeKey[] = ['peOffAtSignup', 'peOffAt3', 'peOffAt15', 'peOffAt27', 'peOffAt39']
+// const timepointKeysMonthly: TimeKeyMonthly[] = ['peOffAtSignup', 'peOffAt1', 'peOffAt2', 'peOffAt3', 'peOffAt4', 'peOffAt5', 'peOffAt6', 'peOffAt15', 'peOffAt27', 'peOffAt39']
+const timepointKeysMonthly: TimeKeyMonthly[] = ['peOffAt1', 'peOffAt2', 'peOffAt3', 'peOffAt4', 'peOffAt5', 'peOffAt6', 'peOffAt15', 'peOffAt27', 'peOffAt39']
 
 export class CustomerEventController {
   constructor(
@@ -161,19 +173,18 @@ export class CustomerEventController {
               isTrialing: isTrialing
             }
 
-            type TimeKey = "peOffAtSignup" | "peOffAt3" | "peOffAt15" | "peOffAt27" | "peOffAt39"
-            type TimeKeyMonthly = "peOffAtSignup" | "peOffAt1" | "peOffAt2" | "peOffAt3" | "peOffAt4" | "peOffAt5" | "peOffAt6" | "peOffAt15" | "peOffAt27" | "peOffAt39"
+            // type TimeKey = "peOffAtSignup" | "peOffAt3" | "peOffAt15" | "peOffAt27" | "peOffAt39"
+            // type TimeKeyMonthly = "peOffAtSignup" | "peOffAt1" | "peOffAt2" | "peOffAt3" | "peOffAt4" | "peOffAt5" | "peOffAt6" | "peOffAt15" | "peOffAt27" | "peOffAt39"
 
             let timepointsNonLease: Date[] = [signup, threeMonths, oneYear, twoYears, threeYears];
-
             let timepointsMonthly: Date[] = [signup, oneMonth, twoMonths, threeMonths, fourMonths, fiveMonths, sixMonths, oneYear, twoYears, threeYears];
 
-            const timepointStrs: string[] = ['signup', 'threeMonths', 'oneYear', 'twoYears', 'threeYears'];
-            const timepointStrsMonthly: string[] = ['signup', 'oneMonth', 'twoMonths', 'threeMonths', 'fourMonths', 'fiveMonths', 'sixMonths', 'oneYear', 'twoYears', 'threeYears'];
+            // const timepointStrs: string[] = ['signup', 'threeMonths', 'oneYear', 'twoYears', 'threeYears'];
+            // const timepointStrsMonthly: string[] = ['signup', 'oneMonth', 'twoMonths', 'threeMonths', 'fourMonths', 'fiveMonths', 'sixMonths', 'oneYear', 'twoYears', 'threeYears'];
 
-            const timepointKeys: TimeKey[] = ['peOffAtSignup', 'peOffAt3', 'peOffAt15', 'peOffAt27', 'peOffAt39']
+            // const timepointKeys: TimeKey[] = ['peOffAtSignup', 'peOffAt3', 'peOffAt15', 'peOffAt27', 'peOffAt39']
 
-            const timepointKeysMonthly: TimeKeyMonthly[] = ['peOffAtSignup', 'peOffAt1', 'peOffAt2', 'peOffAt3', 'peOffAt4', 'peOffAt5', 'peOffAt6', 'peOffAt15', 'peOffAt27', 'peOffAt39']
+            // const timepointKeysMonthly: TimeKeyMonthly[] = ['peOffAtSignup', 'peOffAt1', 'peOffAt2', 'peOffAt3', 'peOffAt4', 'peOffAt5', 'peOffAt6', 'peOffAt15', 'peOffAt27', 'peOffAt39']
 
             function getTimepointKey(timePoint: string): TimeKey | TimeKeyMonthly {
               return productType == "month lease" ? timepointKeysMonthly[timepointStrsMonthly.indexOf(timePoint)] : timepointKeys[timepointStrs.indexOf(timePoint)]
@@ -328,6 +339,65 @@ export class CustomerEventController {
     return isLive ? this.customerEventRepository.find(filter) : this.customerEventSandboxRepository.find(filter);
   }
 
+
+  generateMonthlyDropoffRow(rowType: string, custEventArray: CustomerEvent[]): DropoffRow {
+    const monthlyTimepointNames = ['dropoff 1m', 'dropoff 2m', 'dropoff 3m', 'dropoff 4m', 'dropoff 5m', 'dropoff 6m', 'dropoff 1y', 'dropoff 2y', 'dropoff 3y',]
+    // const monthlyTimepointNames = ['signup', 'dropoff 1m', 'dropoff 2m', 'dropoff 3m', 'dropoff 4m', 'dropoff 5m', 'dropoff 6m', 'dropoff 1y', 'dropoff 2y', 'dropoff 3y',]
+    let dropoffRow: DropoffRow = {
+      name: monthlyTimepointNames[timepointStrsMonthly.indexOf(rowType)]
+    };
+    let rowKey = timepointKeysMonthly[timepointStrsMonthly.indexOf(rowType)];
+    let dropCount = (custEventArray.filter(cust => cust[rowKey])).length
+    let falseCount = (custEventArray.filter(cust => cust[rowKey] === false)).length
+    let userCount = Math.round((dropCount / (dropCount + falseCount)) * 100)
+    dropoffRow.userCount = userCount
+    dropoffRow.countOnly = false
+    return dropoffRow
+  }
+
+  generateSubscriptionCountRow(state: string, custArray: CustomerEvent[]): DropoffRow {
+    // totalCusts, numTrialing, numActive
+    // let countKey : RowCountKey = rowCountKeys[rowCountStrs.indexOf(state)]
+    let rowOfCount: DropoffRow = {
+      name: state,
+      countOnly: true
+    }
+    switch (state) {
+      case 'total': rowOfCount.userCount = custArray.length;
+        rowOfCount.name = "Total Customers";
+        break;
+      case 'active': rowOfCount.userCount = custArray.filter(cust => cust.isActive).length;
+        rowOfCount.name = "Active"
+        break;
+      case 'trialing': rowOfCount.userCount = custArray.filter(cust => cust.isTrialing).length;
+        rowOfCount.name = "Trialing";
+        break;
+      default: rowOfCount.userCount = 0;
+    }
+
+    return rowOfCount
+  }
+
+  generateMonthlyDropoffTable(title: string, monthlyCust: CustomerEvent[]): DropoffTable {
+    let monthlyDropoffs: DropoffTable = {
+      title: title,
+    }
+    monthlyDropoffs.totalCusts = this.generateSubscriptionCountRow('total', monthlyCust)
+    monthlyDropoffs.numActive = this.generateSubscriptionCountRow('active', monthlyCust)
+    monthlyDropoffs.dropoff1m = this.generateMonthlyDropoffRow('oneMonth', monthlyCust)
+    monthlyDropoffs.dropoff2m = this.generateMonthlyDropoffRow('twoMonths', monthlyCust)
+    monthlyDropoffs.dropoff3m = this.generateMonthlyDropoffRow('threeMonths', monthlyCust)
+    monthlyDropoffs.dropoff4m = this.generateMonthlyDropoffRow('fourMonths', monthlyCust)
+    monthlyDropoffs.dropoff5m = this.generateMonthlyDropoffRow('fiveMonths', monthlyCust)
+    monthlyDropoffs.dropoff6m = this.generateMonthlyDropoffRow('sixMonths', monthlyCust)
+    monthlyDropoffs.dropoff1y = this.generateMonthlyDropoffRow('oneYear', monthlyCust)
+    monthlyDropoffs.dropoff2y = this.generateMonthlyDropoffRow('twoYears', monthlyCust)
+    monthlyDropoffs.dropoff3y = this.generateMonthlyDropoffRow('threeYears', monthlyCust)
+
+    return monthlyDropoffs
+  }
+
+
   @get('/customer-events/drop-offs')
   @response(200, {
     description: 'Object with drop-off perentages',
@@ -449,6 +519,10 @@ export class CustomerEventController {
         dropoffArray[i].numTrialing = numTrialing;
         dropoffArray[i].noOptIn = noOptIn;
         dropoffArray[i].dropoff3m = dropoff3m;
+      }
+
+      if (productType == "month lease") {
+        dropoffArray[i] = this.generateMonthlyDropoffTable(tableTitles[i], totalCust)
       }
 
 
