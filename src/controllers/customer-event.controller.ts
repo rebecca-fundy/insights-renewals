@@ -45,18 +45,19 @@ function setProductType(products: (Subscription & SubscriptionRelations)[]): str
 }
 
 type RowCountKey = "totalCusts" | "numTrialing" | "numActive"
+
 type TimeKey = "peOffAtSignup" | "peOffAt3" | "peOffAt15" | "peOffAt27" | "peOffAt39"
+type TimeKeyYearly = "peOffAt15" | "peOffAt27" | "peOffAt39"
 type TimeKeyMonthly = "peOffAt1" | "peOffAt2" | "peOffAt3" | "peOffAt4" | "peOffAt5" | "peOffAt6" | 'peOffAt15' | 'peOffAt27' | 'peOffAt39'
-// type TimeKeyMonthly = "peOffAtSignup" | "peOffAt1" | "peOffAt2" | "peOffAt3" | "peOffAt4" | "peOffAt5" | "peOffAt6" | 'peOffAt15' | 'peOffAt27' | 'peOffAt39'
 
 const rowCountStrs: string[] = ["total", "trialing", "active"]
 const timepointStrs: string[] = ['signup', 'threeMonths', 'oneYear', 'twoYears', 'threeYears'];
-// const timepointStrsMonthly: string[] = ['signup', 'oneMonth', 'twoMonths', 'threeMonths', 'fourMonths', 'fiveMonths', 'sixMonths', 'oneYear', 'twoYears', 'threeYears'];
+const timepointStrsYearly: string[] = ['oneYear', 'twoYears', 'threeYears'];
 const timepointStrsMonthly: string[] = ['oneMonth', 'twoMonths', 'threeMonths', 'fourMonths', 'fiveMonths', 'sixMonths', 'oneYear', 'twoYears', 'threeYears'];
 
 const rowCountKeys: RowCountKey[] = ['totalCusts', 'numTrialing', 'numActive']
 const timepointKeys: TimeKey[] = ['peOffAtSignup', 'peOffAt3', 'peOffAt15', 'peOffAt27', 'peOffAt39']
-// const timepointKeysMonthly: TimeKeyMonthly[] = ['peOffAtSignup', 'peOffAt1', 'peOffAt2', 'peOffAt3', 'peOffAt4', 'peOffAt5', 'peOffAt6', 'peOffAt15', 'peOffAt27', 'peOffAt39']
+const timepointKeysYearly: TimeKey[] = ['peOffAt15', 'peOffAt27', 'peOffAt39']
 const timepointKeysMonthly: TimeKeyMonthly[] = ['peOffAt1', 'peOffAt2', 'peOffAt3', 'peOffAt4', 'peOffAt5', 'peOffAt6', 'peOffAt15', 'peOffAt27', 'peOffAt39']
 
 export class CustomerEventController {
@@ -340,13 +341,29 @@ export class CustomerEventController {
   }
 
 
-  generateMonthlyDropoffRow(rowType: string, custEventArray: CustomerEvent[]): DropoffRow {
+  generateDropoffRow(rowType: string, productType: string, custEventArray: CustomerEvent[]): DropoffRow {
     const monthlyTimepointNames = ['dropoff 1m', 'dropoff 2m', 'dropoff 3m', 'dropoff 4m', 'dropoff 5m', 'dropoff 6m', 'dropoff 1y', 'dropoff 2y', 'dropoff 3y',]
-    // const monthlyTimepointNames = ['signup', 'dropoff 1m', 'dropoff 2m', 'dropoff 3m', 'dropoff 4m', 'dropoff 5m', 'dropoff 6m', 'dropoff 1y', 'dropoff 2y', 'dropoff 3y',]
+    const yearlyTimepointNames = ['dropoff 1y', 'dropoff 2y', 'dropoff 3y']
+    const peTimepointNames = ['No opt in', 'dropoff3m', 'dropoff 1y', 'dropoff 2y', 'dropoff 3y']
+
+    let name = "";
+    let rowKey: TimeKey | TimeKeyMonthly | TimeKeyYearly;
+    if (productType == "non lease") {console.log(rowType)}
+    if (productType == "month lease") {
+      name = monthlyTimepointNames[timepointStrsMonthly.indexOf(rowType)]
+      rowKey = timepointKeysMonthly[timepointStrsMonthly.indexOf(rowType)];
+    } else if (productType == "year lease") {
+      name = yearlyTimepointNames[timepointStrsYearly.indexOf(rowType)]
+      rowKey = timepointKeysYearly[timepointStrsYearly.indexOf(rowType)];
+    } else {
+      name = peTimepointNames[timepointStrs.indexOf(rowType)]
+      rowKey = timepointKeys[timepointStrs.indexOf(rowType)];
+      console.log(name, rowKey)
+    }
     let dropoffRow: DropoffRow = {
-      name: monthlyTimepointNames[timepointStrsMonthly.indexOf(rowType)]
+      name: name
     };
-    let rowKey = timepointKeysMonthly[timepointStrsMonthly.indexOf(rowType)];
+    // rowKey = timepointKeysMonthly[timepointStrsMonthly.indexOf(rowType)];
     let dropCount = (custEventArray.filter(cust => cust[rowKey])).length
     let falseCount = (custEventArray.filter(cust => cust[rowKey] === false)).length
     let userCount = Math.round((dropCount / (dropCount + falseCount)) * 100)
@@ -356,8 +373,6 @@ export class CustomerEventController {
   }
 
   generateSubscriptionCountRow(state: string, custArray: CustomerEvent[]): DropoffRow {
-    // totalCusts, numTrialing, numActive
-    // let countKey : RowCountKey = rowCountKeys[rowCountStrs.indexOf(state)]
     let rowOfCount: DropoffRow = {
       name: state,
       countOnly: true
@@ -374,27 +389,58 @@ export class CustomerEventController {
         break;
       default: rowOfCount.userCount = 0;
     }
-
     return rowOfCount
   }
 
-  generateMonthlyDropoffTable(title: string, monthlyCust: CustomerEvent[]): DropoffTable {
+  generateMonthlyDropoffTable(monthlyCust: CustomerEvent[]): DropoffTable {
     let monthlyDropoffs: DropoffTable = {
-      title: title,
+      title: "Month Lease",
     }
+    const productType = "month lease"
     monthlyDropoffs.totalCusts = this.generateSubscriptionCountRow('total', monthlyCust)
     monthlyDropoffs.numActive = this.generateSubscriptionCountRow('active', monthlyCust)
-    monthlyDropoffs.dropoff1m = this.generateMonthlyDropoffRow('oneMonth', monthlyCust)
-    monthlyDropoffs.dropoff2m = this.generateMonthlyDropoffRow('twoMonths', monthlyCust)
-    monthlyDropoffs.dropoff3m = this.generateMonthlyDropoffRow('threeMonths', monthlyCust)
-    monthlyDropoffs.dropoff4m = this.generateMonthlyDropoffRow('fourMonths', monthlyCust)
-    monthlyDropoffs.dropoff5m = this.generateMonthlyDropoffRow('fiveMonths', monthlyCust)
-    monthlyDropoffs.dropoff6m = this.generateMonthlyDropoffRow('sixMonths', monthlyCust)
-    monthlyDropoffs.dropoff1y = this.generateMonthlyDropoffRow('oneYear', monthlyCust)
-    monthlyDropoffs.dropoff2y = this.generateMonthlyDropoffRow('twoYears', monthlyCust)
-    monthlyDropoffs.dropoff3y = this.generateMonthlyDropoffRow('threeYears', monthlyCust)
+    monthlyDropoffs.dropoff1m = this.generateDropoffRow('oneMonth', productType, monthlyCust)
+    monthlyDropoffs.dropoff2m = this.generateDropoffRow('twoMonths', productType, monthlyCust)
+    monthlyDropoffs.dropoff3m = this.generateDropoffRow('threeMonths', productType, monthlyCust)
+    monthlyDropoffs.dropoff4m = this.generateDropoffRow('fourMonths', productType, monthlyCust)
+    monthlyDropoffs.dropoff5m = this.generateDropoffRow('fiveMonths', productType, monthlyCust)
+    monthlyDropoffs.dropoff6m = this.generateDropoffRow('sixMonths', productType, monthlyCust)
+    monthlyDropoffs.dropoff1y = this.generateDropoffRow('oneYear', productType, monthlyCust)
+    monthlyDropoffs.dropoff2y = this.generateDropoffRow('twoYears', productType, monthlyCust)
+    monthlyDropoffs.dropoff3y = this.generateDropoffRow('threeYears', productType, monthlyCust)
 
     return monthlyDropoffs
+  }
+
+  generateYearlyDropoffTable(yearlyCust: CustomerEvent[]): DropoffTable {
+    let yearlyDropoffs: DropoffTable = {
+      title: "Year Lease"
+    }
+    const productType = "year lease"
+    yearlyDropoffs.totalCusts = this.generateSubscriptionCountRow('total', yearlyCust)
+    yearlyDropoffs.numActive = this.generateSubscriptionCountRow('active', yearlyCust)
+    yearlyDropoffs.dropoff1y = this.generateDropoffRow('oneYear', productType, yearlyCust)
+    yearlyDropoffs.dropoff2y = this.generateDropoffRow('twoYears', productType, yearlyCust)
+    yearlyDropoffs.dropoff3y = this.generateDropoffRow('threeYears', productType, yearlyCust)
+
+    return yearlyDropoffs
+  }
+
+  generateProDropoffTable(peCust: CustomerEvent[]): DropoffTable {
+    let peDropoffs: DropoffTable = {
+      title: "Pro Enhancements"
+    }
+    const productType = "non lease"
+    peDropoffs.totalCusts = this.generateSubscriptionCountRow('total', peCust)
+    peDropoffs.numActive = this.generateSubscriptionCountRow('active', peCust)
+    peDropoffs.numTrialing = this.generateSubscriptionCountRow('trialing', peCust)
+    peDropoffs.noOptIn = this.generateDropoffRow('signup', productType, peCust)
+    peDropoffs.dropoff3m = this.generateDropoffRow('threeMonths', productType, peCust)
+    peDropoffs.dropoff1y = this.generateDropoffRow('oneYear', productType, peCust)
+    peDropoffs.dropoff2y = this.generateDropoffRow('twoYears', productType, peCust)
+    peDropoffs.dropoff3y = this.generateDropoffRow('threeYears', productType, peCust)
+
+    return peDropoffs
   }
 
 
@@ -423,106 +469,111 @@ export class CustomerEventController {
       let productFilter: Filter<CustomerEvent> = {"where": {"productType": `${productTypes[i]}`}}
 
       let totalCust = (await this.find(productFilter));
-      let totalCustomers = totalCust.length;
-      console.log(productTypes[i], totalCustomers)
+      // let totalCustomers = totalCust.length;
+      // console.log(productTypes[i], totalCustomers)
 
-      let totalActive = totalCust.filter(cust => cust.isActive).length
-      let totalTrialing = totalCust.filter(cust => cust.isTrialing).length
+      // let totalActive = totalCust.filter(cust => cust.isActive).length
+      // let totalTrialing = totalCust.filter(cust => cust.isTrialing).length
 
-      let dropoffAtSignup = undefined;
-      let dropoffAt3m = undefined;
+      // let dropoffAtSignup = undefined;
+      // let dropoffAt3m = undefined;
+
+      // if (productType == "non-lease") {
+
+      //   let signupDropCount = totalCust.filter(cust => cust.peOffAtSignup).length
+      //   let signupFalseCount = totalCust.filter(cust => cust.peOffAtSignup === false).length
+      //   dropoffAtSignup = Math.round((signupDropCount / (signupFalseCount + signupDropCount)) * 100)
+
+      //   let threeMthDropCount = totalCust.filter(cust => cust.peOffAt3).length
+      //   let threeMthFalseCount = totalCust.filter(cust => cust.peOffAt3 === false).length
+      //   dropoffAt3m = Math.round((threeMthDropCount / (threeMthFalseCount + threeMthDropCount)) * 100);
+      // }
+
+      // let oneYrDropCount = totalCust.filter(cust => cust.peOffAt15).length
+      // let oneYrFalseCount = totalCust.filter(cust => cust.peOffAt15 === false).length
+      // let dropoffAt1y = Math.round((oneYrDropCount / (oneYrFalseCount + oneYrDropCount)) * 100);
+
+      // let twoYrDropCount = totalCust.filter(cust => cust.peOffAt27).length
+      // let twoYrFalseCount = totalCust.filter(cust => cust.peOffAt27 === false).length
+      // let dropoffAt2y = Math.round((twoYrDropCount / (twoYrFalseCount + twoYrDropCount)) * 100);
+
+      // let threeYrDropCount = totalCust.filter(cust => cust.peOffAt39).length
+      // let threeYrFalseCount = totalCust.filter(cust => cust.peOffAt39 === false).length
+      // let dropoffAt3y = Math.round((threeYrDropCount / (threeYrFalseCount + threeYrDropCount)) * 100);
+
+      // let totalCusts: DropoffRow = {
+      //   name: "Total customers",
+      //   userCount: totalCustomers,
+      //   countOnly: true
+      // }
+
+      // let numActive: DropoffRow = {
+      //   name: "Active",
+      //   userCount: totalActive,
+      //   countOnly: true
+      // }
+
+      // let numTrialing: DropoffRow = {
+      //   name: "Trialing",
+      //   userCount: totalTrialing,
+      //   countOnly: true
+      // }
+
+      // let noOptIn: DropoffRow = {
+      //   name: "No opt in",
+      //   userCount: dropoffAtSignup,
+      //   countOnly: false
+      // }
+
+      // let dropoff3m: DropoffRow = {
+      //   name: "dropoff 3m",
+      //   userCount: dropoffAt3m,
+      //   countOnly: false,
+      // }
+
+      // let dropoff1y: DropoffRow = {
+      //   name: "dropoff 1y",
+      //   userCount: dropoffAt1y,
+      //   countOnly: false
+      // }
+
+      // let dropoff2y: DropoffRow = {
+      //   name: "dropoff 2y",
+      //   userCount: dropoffAt2y,
+      //   countOnly: false
+      // }
+
+      // let dropoff3y: DropoffRow = {
+      //   name: "dropoff 3y",
+      //   userCount: dropoffAt3y,
+      //   countOnly: false
+      // }
+
+      // dropoffArray[i] = {
+      //   title: tableTitles[i],
+      //   totalCusts,
+      //   numActive,
+      //   // numTrialing,
+      //   // noOptIn,
+      //   // dropoff3m,
+      //   dropoff1y,
+      //   dropoff2y,
+      //   dropoff3y,
+      // }
 
       if (productType == "non-lease") {
-
-        let signupDropCount = totalCust.filter(cust => cust.peOffAtSignup).length
-        let signupFalseCount = totalCust.filter(cust => cust.peOffAtSignup === false).length
-        dropoffAtSignup = Math.round((signupDropCount / (signupFalseCount + signupDropCount)) * 100)
-
-        let threeMthDropCount = totalCust.filter(cust => cust.peOffAt3).length
-        let threeMthFalseCount = totalCust.filter(cust => cust.peOffAt3 === false).length
-        dropoffAt3m = Math.round((threeMthDropCount / (threeMthFalseCount + threeMthDropCount)) * 100);
+        // dropoffArray[i].numTrialing = numTrialing;
+        // dropoffArray[i].noOptIn = noOptIn;
+        // dropoffArray[i].dropoff3m = dropoff3m;
+        dropoffArray[i] = this.generateProDropoffTable(totalCust)
       }
 
-      let oneYrDropCount = totalCust.filter(cust => cust.peOffAt15).length
-      let oneYrFalseCount = totalCust.filter(cust => cust.peOffAt15 === false).length
-      let dropoffAt1y = Math.round((oneYrDropCount / (oneYrFalseCount + oneYrDropCount)) * 100);
-
-      let twoYrDropCount = totalCust.filter(cust => cust.peOffAt27).length
-      let twoYrFalseCount = totalCust.filter(cust => cust.peOffAt27 === false).length
-      let dropoffAt2y = Math.round((twoYrDropCount / (twoYrFalseCount + twoYrDropCount)) * 100);
-
-      let threeYrDropCount = totalCust.filter(cust => cust.peOffAt39).length
-      let threeYrFalseCount = totalCust.filter(cust => cust.peOffAt39 === false).length
-      let dropoffAt3y = Math.round((threeYrDropCount / (threeYrFalseCount + threeYrDropCount)) * 100);
-
-      let totalCusts: DropoffRow = {
-        name: "Total customers",
-        userCount: totalCustomers,
-        countOnly: true
-      }
-
-      let numActive: DropoffRow = {
-        name: "Active",
-        userCount: totalActive,
-        countOnly: true
-      }
-
-      let numTrialing: DropoffRow = {
-        name: "Trialing",
-        userCount: totalTrialing,
-        countOnly: true
-      }
-
-      let noOptIn: DropoffRow = {
-        name: "No opt in",
-        userCount: dropoffAtSignup,
-        countOnly: false
-      }
-
-      let dropoff3m: DropoffRow = {
-        name: "dropoff 3m",
-        userCount: dropoffAt3m,
-        countOnly: false,
-      }
-
-      let dropoff1y: DropoffRow = {
-        name: "dropoff 1y",
-        userCount: dropoffAt1y,
-        countOnly: false
-      }
-
-      let dropoff2y: DropoffRow = {
-        name: "dropoff 2y",
-        userCount: dropoffAt2y,
-        countOnly: false
-      }
-
-      let dropoff3y: DropoffRow = {
-        name: "dropoff 3y",
-        userCount: dropoffAt3y,
-        countOnly: false
-      }
-
-      dropoffArray[i] = {
-        title: tableTitles[i],
-        totalCusts,
-        numActive,
-        // numTrialing,
-        // noOptIn,
-        // dropoff3m,
-        dropoff1y,
-        dropoff2y,
-        dropoff3y,
-      }
-
-      if (productType == "non-lease") {
-        dropoffArray[i].numTrialing = numTrialing;
-        dropoffArray[i].noOptIn = noOptIn;
-        dropoffArray[i].dropoff3m = dropoff3m;
+      if (productType == "year lease") {
+        dropoffArray[i] = this.generateYearlyDropoffTable(totalCust)
       }
 
       if (productType == "month lease") {
-        dropoffArray[i] = this.generateMonthlyDropoffTable(tableTitles[i], totalCust)
+        dropoffArray[i] = this.generateMonthlyDropoffTable(totalCust)
       }
 
 
