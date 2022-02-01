@@ -70,18 +70,6 @@ export class WebhookController {
     }
     let product_id = subscription["product"]["id"]
 
-    console.log(id)
-    console.log(event);
-    console.log(payload["previous_allocation"])
-    console.log(payload["new_allocation"])
-    console.log(subscription_id)
-    console.log(customer_id)
-    console.log(subdomain)
-    console.log(payload["timestamp"] || subscription["created_at"] || subscription["updated_at"])
-    console.log(subscription["previous_state"])
-    console.log(subscription["state"])
-    console.log(subdomain == "fundy-suite-sandbox")
-
     let eventDbData: Partial<EventDb> = {
       id: payload["event_id"],
       subscription_id: subscription["id"],
@@ -100,8 +88,18 @@ export class WebhookController {
       created_at: subscription["created_at"],
       product_id: product_id,
       customer_id: customer_id,
-      state: subscription["state"]
-      // peOn: true
+      state: subscription["state"],
+      peOn: true //For lease products, this will be synonymous with an active subscription. Non-lease products will be set by the routine below.
+    }
+
+    //[month lease live, month lease sandbox, year lease live, year lease sandbox]
+    const leaseProductIds = [5874830, 5601362, 5135042, 5081978]
+
+    //If it's not a lease product, query the Chargify API to find out if is on for the new subscription.
+    if (!leaseProductIds.includes(product_id) && event == "signup_success") {
+      newSubscriptionData.peOn = await this.eventService.listComponents(subscription_id)
+        .then(components => components.filter(component => component.component.name == "Fundy Pro Enhancements"))
+        .then(pEcomponent => pEcomponent[0].component.enabled)
     }
 
     let subscriptionStateChangeData: Partial<Subscription> = {
@@ -117,21 +115,12 @@ export class WebhookController {
       created_at: event == "signup_success" ? new Date(subscription["customer"]["created_at"]) : undefined
     }
 
-    //[month lease live, month lease sandbox, year lease live, year lease sandbox]
-    const leaseProductIds = [5874530, 5601362, 5135042, 5081978]
-    //For signup_success, set peOn for non-lease products.
-    if (!leaseProductIds.includes(product_id) && event == "signup_success") {
-      newSubscriptionData.peOn = await this.eventService.listComponents(subscription_id)
-        .then(components => components.filter(component => component.component.name == "Fundy Pro Enhancements"))
-        .then(pEcomponent => pEcomponent[0].component.enabled)
-    }
     //For subscription state changes, there will already be a subscription, so it will be updated.
     if (event == "subscription_state_change") {
       try {
         subdomain == "fundy-suite"
           ? await this.subscriptionRepository.updateById(subscription_id, subscriptionStateChangeData)
           : await this.subscriptionSandboxRepository.updateById(subscription_id, subscriptionStateChangeData)
-            .then(result => console.log('result: ' + result))
       } catch (error) {
         console.log(error)
       }
@@ -142,23 +131,21 @@ export class WebhookController {
         subdomain == "fundy-suite"
           ? await this.subscriptionRepository.updateById(subscription_id, togglePeData)
           : await this.subscriptionSandboxRepository.updateById(subscription_id, togglePeData)
-            .then(result => console.log('result: ' + result))
       } catch (error) {
         console.log(error)
       }
     }
 
-
     if (subdomain == "fundy-suite") {
-      if (event == "signup_success") {
-        try {
+      if (event == "signup_success") { //A signup success may be a new customer, or an upgrade for an existing customer.
+        try { //If the customer id already exists in the customer repo this will throw an error
           await this.customerRepository.create(customerData)
         } catch (error) {
           console.log(error.message)
-        } finally {
+        } finally { //Regardless, the subscription repo must get the new subscription info
           return this.subscriptionRepository.create(newSubscriptionData)
         }
-      } else {
+      } else { //Allocation and subscription state changes go in the event table.
         return this.eventDbRepository.create(eventDbData)
       }
     } else {

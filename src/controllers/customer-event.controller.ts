@@ -1,4 +1,4 @@
-// import {Subscription} from '@loopback/core';
+import {inject} from '@loopback/core';
 import {
   Count,
   CountSchema,
@@ -14,6 +14,7 @@ import {
 } from '@loopback/rest';
 import {CustomerEvent, EventDb, Subscription, SubscriptionRelations} from '../models';
 import {CustomerEventRepository, CustomerEventSandboxRepository, CustomerRepository, CustomerSandboxRepository, DropoffRow, DropoffTable, EventDbRepository, EventDbSandboxRepository, SubscriptionRepository, SubscriptionSandboxRepository} from '../repositories';
+import {EventController} from './event.controller';
 
 let isLive: boolean = process.env.CHARGIFY_ENV == "live";
 
@@ -29,7 +30,7 @@ function addMonths(date: Date, months: number, i?: number): Date {
 }
 
 function setProductType(products: (Subscription & SubscriptionRelations)[]): string {
-  const monthLeaseProductId = process.env.CHARGIFY_ENV == "live" ? 5874530 : 5601362;
+  const monthLeaseProductId = process.env.CHARGIFY_ENV == "live" ? 5874830 : 5601362;
   const yearLeaseProductId = process.env.CHARGIFY_ENV == "live" ? 5135042 : 5081978;
   let productType = ""
   if (products.length != 0 && products[products.length - 1].product_id == monthLeaseProductId) {
@@ -44,18 +45,14 @@ function setProductType(products: (Subscription & SubscriptionRelations)[]): str
   return productType;
 }
 
-type RowCountKey = "totalCusts" | "numTrialing" | "numActive"
-
 type TimeKey = "peOffAtSignup" | "peOffAt3" | "peOffAt15" | "peOffAt27" | "peOffAt39"
 type TimeKeyYearly = "peOffAt15" | "peOffAt27" | "peOffAt39"
 type TimeKeyMonthly = "peOffAt1" | "peOffAt2" | "peOffAt3" | "peOffAt4" | "peOffAt5" | "peOffAt6" | 'peOffAt15' | 'peOffAt27' | 'peOffAt39'
 
-const rowCountStrs: string[] = ["total", "trialing", "active"]
 const timepointStrs: string[] = ['signup', 'threeMonths', 'oneYear', 'twoYears', 'threeYears'];
 const timepointStrsYearly: string[] = ['oneYear', 'twoYears', 'threeYears'];
 const timepointStrsMonthly: string[] = ['oneMonth', 'twoMonths', 'threeMonths', 'fourMonths', 'fiveMonths', 'sixMonths', 'oneYear', 'twoYears', 'threeYears'];
 
-const rowCountKeys: RowCountKey[] = ['totalCusts', 'numTrialing', 'numActive']
 const timepointKeys: TimeKey[] = ['peOffAtSignup', 'peOffAt3', 'peOffAt15', 'peOffAt27', 'peOffAt39']
 const timepointKeysYearly: TimeKey[] = ['peOffAt15', 'peOffAt27', 'peOffAt39']
 const timepointKeysMonthly: TimeKeyMonthly[] = ['peOffAt1', 'peOffAt2', 'peOffAt3', 'peOffAt4', 'peOffAt5', 'peOffAt6', 'peOffAt15', 'peOffAt27', 'peOffAt39']
@@ -78,6 +75,9 @@ export class CustomerEventController {
     public eventDbRepository: EventDbRepository,
     @repository(EventDbSandboxRepository)
     public eventDbSandboxRepository: EventDbSandboxRepository,
+    // @inject(EventController)
+    @inject('controllers.EventController')
+    public eventController: EventController,
   ) { }
 
   @post('/customer-events')
@@ -119,10 +119,12 @@ export class CustomerEventController {
     if (customerEventCount == 0) {
       //Setting of historical PE event data by customer
       let today = new Date();
-      //Grab array of customers and events; events ordered by ascending creation date.
 
+      //Grab array of customers and events; events ordered by ascending creation date.
       const subscriptionArray = await (isLive ? this.subscriptionRepository.find() : this.subscriptionSandboxRepository.find());
-      const eventArray = await (isLive ? this.eventDbRepository.find({order: ["subscription_id ASC", "created_at ASC"]}) : this.eventDbSandboxRepository.find({order: ["subscription_id ASC", "created_at ASC"]}));
+      const eventArray = await this.eventController.find({order: ["subscription_id ASC", "created_at ASC"]})
+      // const eventArray = await (isLive ? this.eventController.find({order: ["subscription_id ASC", "created_at ASC"]}) : this.eventDbSandboxRepository.find({order: ["subscription_id ASC", "created_at ASC"]}));
+      // const eventArray = await (isLive ? this.eventDbRepository.find({order: ["subscription_id ASC", "created_at ASC"]}) : this.eventDbSandboxRepository.find({order: ["subscription_id ASC", "created_at ASC"]}));
 
       await (isLive ? (this.customerRepository.find()) : (this.customerSandboxRepository.find()))
         .then(async customerArray => {
@@ -130,8 +132,8 @@ export class CustomerEventController {
             let customer = customerArray[i]; //For each customer in the customer array...
             let customerEvents = eventArray.filter(event => event.customer_id == customer.id) //Filter the events array to events for this customer
             let products = subscriptionArray.filter(subscription => subscription.customer_id === customer.id).sort() //List customer subscriptions oldest to newest
-            let hasProduct = products.length
-            const custCreationDate = products.length == 0 ? new Date(customer.created_at) : new Date(products[0].created_at); //Set the customer creation date to the creation date of the first subscription. This will be the date that all the timepoints will be measured from. (If no subscriptions, it will be the customer creation date.)
+            let hasProduct = products.length //Filter condition for customers with no subscriptions
+            const custCreationDate = !hasProduct ? new Date(customer.created_at) : new Date(products[0].created_at); //Set the customer creation date to the creation date of the first subscription. This will be the date that all the timepoints will be measured from. (If no subscriptions, it will be the customer creation date.)
 
             //Set product type for this customer.
             let productType = setProductType(products);
@@ -174,18 +176,8 @@ export class CustomerEventController {
               isTrialing: isTrialing
             }
 
-            // type TimeKey = "peOffAtSignup" | "peOffAt3" | "peOffAt15" | "peOffAt27" | "peOffAt39"
-            // type TimeKeyMonthly = "peOffAtSignup" | "peOffAt1" | "peOffAt2" | "peOffAt3" | "peOffAt4" | "peOffAt5" | "peOffAt6" | "peOffAt15" | "peOffAt27" | "peOffAt39"
-
             let timepointsNonLease: Date[] = [signup, threeMonths, oneYear, twoYears, threeYears];
             let timepointsMonthly: Date[] = [signup, oneMonth, twoMonths, threeMonths, fourMonths, fiveMonths, sixMonths, oneYear, twoYears, threeYears];
-
-            // const timepointStrs: string[] = ['signup', 'threeMonths', 'oneYear', 'twoYears', 'threeYears'];
-            // const timepointStrsMonthly: string[] = ['signup', 'oneMonth', 'twoMonths', 'threeMonths', 'fourMonths', 'fiveMonths', 'sixMonths', 'oneYear', 'twoYears', 'threeYears'];
-
-            // const timepointKeys: TimeKey[] = ['peOffAtSignup', 'peOffAt3', 'peOffAt15', 'peOffAt27', 'peOffAt39']
-
-            // const timepointKeysMonthly: TimeKeyMonthly[] = ['peOffAtSignup', 'peOffAt1', 'peOffAt2', 'peOffAt3', 'peOffAt4', 'peOffAt5', 'peOffAt6', 'peOffAt15', 'peOffAt27', 'peOffAt39']
 
             function getTimepointKey(timePoint: string): TimeKey | TimeKeyMonthly {
               return productType == "month lease" ? timepointKeysMonthly[timepointStrsMonthly.indexOf(timePoint)] : timepointKeys[timepointStrs.indexOf(timePoint)]
@@ -205,7 +197,6 @@ export class CustomerEventController {
                 peStatus = "on"
                 peAlreadyOff = false
               } else if (event.new_subscription_state == "canceled" && !peAlreadyOff) {
-                if (productType == "month lease") {console.log(timePoint, timePointKey)}
                 data[timePointKey] = true
                 peAlreadyOff = true
               } else if (event.new_subscription_state == "active" && (peStatus == "on" || (data.productType !== "non-lease"))) {
@@ -265,7 +256,6 @@ export class CustomerEventController {
               }
               else if (event.created_at <= oneMonth && productType == "month lease") {
                 setTimepoint(event, 'oneMonth');
-                console.log(event.id, data)
               }
               else if (event.created_at <= twoMonths && productType == "month lease") {
                 setTimepoint(event, 'twoMonths')
@@ -304,6 +294,7 @@ export class CustomerEventController {
         })
     }
   }
+
   //Truncate cust-event table and recalculate
   @get('/customer-events/refresh')
   @response(200, {
@@ -335,7 +326,6 @@ export class CustomerEventController {
   async find(
     @param.filter(CustomerEvent) filter?: Filter<CustomerEvent>,
   ): Promise<CustomerEvent[]> {
-    console.log('chargify env live: ' + isLive)
     await this.generateTable();
     return isLive ? this.customerEventRepository.find(filter) : this.customerEventSandboxRepository.find(filter);
   }
@@ -344,7 +334,7 @@ export class CustomerEventController {
   generateDropoffRow(rowType: string, productType: string, custEventArray: CustomerEvent[]): DropoffRow {
     const monthlyTimepointNames = ['dropoff 1m', 'dropoff 2m', 'dropoff 3m', 'dropoff 4m', 'dropoff 5m', 'dropoff 6m', 'dropoff 1y', 'dropoff 2y', 'dropoff 3y',]
     const yearlyTimepointNames = ['dropoff 1y', 'dropoff 2y', 'dropoff 3y']
-    const peTimepointNames = ['No opt in', 'dropoff3m', 'dropoff 1y', 'dropoff 2y', 'dropoff 3y']
+    const peTimepointNames = ['No opt in', 'dropoff 3m', 'dropoff 1y', 'dropoff 2y', 'dropoff 3y']
 
     let name = "";
     let rowKey: TimeKey | TimeKeyMonthly | TimeKeyYearly;
@@ -358,12 +348,10 @@ export class CustomerEventController {
     } else {
       name = peTimepointNames[timepointStrs.indexOf(rowType)]
       rowKey = timepointKeys[timepointStrs.indexOf(rowType)];
-      console.log(name, rowKey)
     }
     let dropoffRow: DropoffRow = {
       name: name
     };
-    // rowKey = timepointKeysMonthly[timepointStrsMonthly.indexOf(rowType)];
     let dropCount = (custEventArray.filter(cust => cust[rowKey])).length
     let falseCount = (custEventArray.filter(cust => cust[rowKey] === false)).length
     let userCount = Math.round((dropCount / (dropCount + falseCount)) * 100)
@@ -459,112 +447,17 @@ export class CustomerEventController {
     @param.filter(CustomerEvent) filter?: Filter<CustomerEvent>,
   ): Promise<DropoffTable[]> {
     let dropoffArray: DropoffTable[] = []
-    //filter on product type = "non-lease", "month lease" or "year lease"
-    //Pro Enhancement filters do not apply to lease products.
-    //Need to make it more generic.
     const productTypes = ["non-lease", "year lease", "month lease"];
-    const tableTitles = ["Pro Enhancements", "Year Lease", "Month Lease"]
+
     for (let i = 0; i < productTypes.length; i++) {
       let productType: string = productTypes[i]
-      let productFilter: Filter<CustomerEvent> = {"where": {"productType": `${productTypes[i]}`}}
+      let productFilter: Filter<CustomerEvent> = {
+        "where": {"productType": `${productTypes[i]}`}
+      }
 
       let totalCust = (await this.find(productFilter));
-      // let totalCustomers = totalCust.length;
-      // console.log(productTypes[i], totalCustomers)
-
-      // let totalActive = totalCust.filter(cust => cust.isActive).length
-      // let totalTrialing = totalCust.filter(cust => cust.isTrialing).length
-
-      // let dropoffAtSignup = undefined;
-      // let dropoffAt3m = undefined;
-
-      // if (productType == "non-lease") {
-
-      //   let signupDropCount = totalCust.filter(cust => cust.peOffAtSignup).length
-      //   let signupFalseCount = totalCust.filter(cust => cust.peOffAtSignup === false).length
-      //   dropoffAtSignup = Math.round((signupDropCount / (signupFalseCount + signupDropCount)) * 100)
-
-      //   let threeMthDropCount = totalCust.filter(cust => cust.peOffAt3).length
-      //   let threeMthFalseCount = totalCust.filter(cust => cust.peOffAt3 === false).length
-      //   dropoffAt3m = Math.round((threeMthDropCount / (threeMthFalseCount + threeMthDropCount)) * 100);
-      // }
-
-      // let oneYrDropCount = totalCust.filter(cust => cust.peOffAt15).length
-      // let oneYrFalseCount = totalCust.filter(cust => cust.peOffAt15 === false).length
-      // let dropoffAt1y = Math.round((oneYrDropCount / (oneYrFalseCount + oneYrDropCount)) * 100);
-
-      // let twoYrDropCount = totalCust.filter(cust => cust.peOffAt27).length
-      // let twoYrFalseCount = totalCust.filter(cust => cust.peOffAt27 === false).length
-      // let dropoffAt2y = Math.round((twoYrDropCount / (twoYrFalseCount + twoYrDropCount)) * 100);
-
-      // let threeYrDropCount = totalCust.filter(cust => cust.peOffAt39).length
-      // let threeYrFalseCount = totalCust.filter(cust => cust.peOffAt39 === false).length
-      // let dropoffAt3y = Math.round((threeYrDropCount / (threeYrFalseCount + threeYrDropCount)) * 100);
-
-      // let totalCusts: DropoffRow = {
-      //   name: "Total customers",
-      //   userCount: totalCustomers,
-      //   countOnly: true
-      // }
-
-      // let numActive: DropoffRow = {
-      //   name: "Active",
-      //   userCount: totalActive,
-      //   countOnly: true
-      // }
-
-      // let numTrialing: DropoffRow = {
-      //   name: "Trialing",
-      //   userCount: totalTrialing,
-      //   countOnly: true
-      // }
-
-      // let noOptIn: DropoffRow = {
-      //   name: "No opt in",
-      //   userCount: dropoffAtSignup,
-      //   countOnly: false
-      // }
-
-      // let dropoff3m: DropoffRow = {
-      //   name: "dropoff 3m",
-      //   userCount: dropoffAt3m,
-      //   countOnly: false,
-      // }
-
-      // let dropoff1y: DropoffRow = {
-      //   name: "dropoff 1y",
-      //   userCount: dropoffAt1y,
-      //   countOnly: false
-      // }
-
-      // let dropoff2y: DropoffRow = {
-      //   name: "dropoff 2y",
-      //   userCount: dropoffAt2y,
-      //   countOnly: false
-      // }
-
-      // let dropoff3y: DropoffRow = {
-      //   name: "dropoff 3y",
-      //   userCount: dropoffAt3y,
-      //   countOnly: false
-      // }
-
-      // dropoffArray[i] = {
-      //   title: tableTitles[i],
-      //   totalCusts,
-      //   numActive,
-      //   // numTrialing,
-      //   // noOptIn,
-      //   // dropoff3m,
-      //   dropoff1y,
-      //   dropoff2y,
-      //   dropoff3y,
-      // }
 
       if (productType == "non-lease") {
-        // dropoffArray[i].numTrialing = numTrialing;
-        // dropoffArray[i].noOptIn = noOptIn;
-        // dropoffArray[i].dropoff3m = dropoff3m;
         dropoffArray[i] = this.generateProDropoffTable(totalCust)
       }
 
@@ -575,11 +468,8 @@ export class CustomerEventController {
       if (productType == "month lease") {
         dropoffArray[i] = this.generateMonthlyDropoffTable(totalCust)
       }
-
-
     }
     return dropoffArray;
-    // return dropoffArray[0];
   }
 
 
