@@ -26,7 +26,7 @@
     "posttest": "npm run lint",
     "test:dev": "lb-mocha --allow-console-logs dist/__tests__/**/*.js && npm run posttest",
     "docker:build": "docker build -t v4-insights .",
-    "docker:run": "docker run -p 3000:3000 -d v4-insights",
+    "docker:run": "docker run -p 3141:3141 -d v4-insights",
     "premigrate": "npm run build",
     "migrate": "node ./dist/migrate",
     "preopenapi-spec": "npm run build",
@@ -55,7 +55,6 @@
     "@loopback/rest": "^11.0.0",
     "@loopback/rest-explorer": "^4.0.0",
     "@loopback/service-proxy": "^4.0.0",
-    "dotenv": "^10.0.0",
     "loopback-connector-mysql": "^5.4.4",
     "loopback-connector-rest": "^3.7.0",
     "tslib": "^2.0.0"

@@ -1,5 +1,5 @@
 import {ApplicationConfig, V4InsightsApplication} from './application';
-const dotenv = require('dotenv').config();
+// const dotenv = require('dotenv').config();
 export * from './application';
 
 export async function main(options: ApplicationConfig = {}) {
@@ -16,8 +16,8 @@ if (require.main === module) {
   // Run the application\
   const config = {
     rest: {
-      port: +(process.env.PORT ?? 3141),
-      host: process.env.HOST,
+      port: +(process.env.INSIGHTS_API_PORT ?? 3141),
+      host: process.env.INSIGHTS_API_HOST,
       // The `gracePeriodForClose` provides a graceful close for http/https
       // servers with keep-alive clients. The default value is `Infinity`
       // (don't force-close). If you want to immediately destroy all sockets
