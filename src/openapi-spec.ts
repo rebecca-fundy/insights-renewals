@@ -7,8 +7,8 @@ import {V4InsightsApplication} from './application';
 async function exportOpenApiSpec(): Promise<void> {
   const config: ApplicationConfig = {
     rest: {
-      port: +(process.env.PORT ?? 3141),
-      host: process.env.HOST ?? 'localhost',
+      port: +(process.env.INSIGHTS_API_PORT ?? 3141),
+      host: process.env.INSIGHTS_API_HOST ?? 'localhost',
     },
   };
   const outFile = process.argv[2] ?? '';
