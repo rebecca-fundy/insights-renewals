@@ -45,12 +45,13 @@ export class EventController {
         'application/json': {
           schema: getModelSchemaRef(EventDb, {
             title: 'NewEventDb',
-            exclude: ['id'],
+            // exclude: ['id'],
           }),
         },
       },
     })
-    eventDb: Omit<EventDb, 'id'>,
+    // eventDb: Omit<EventDb, 'id'>,
+    eventDb: EventDb
   ): Promise<EventDb> {
     return this.eventDbRepository.create(eventDb);
   }
@@ -87,11 +88,15 @@ export class EventController {
     //Step 1: Fetch event data
     try {
       let eventCount = process.env.CHARGIFY_ENV == "live" ? (await this.eventDbRepository.count()).count : (await this.eventDbSandboxRepository.count()).count;
-      if (eventCount != 0) {throw Error("historical events loaded")}
+      let since_id: number = 0;
+      if (eventCount != 0) {
+        since_id = (await this.findMaxId()) + 1
+      }
+      // {throw Error("historical events loaded")}
       let eventArrayFetch: EventObject[] = []; //initialize eventArray to empty array
       let j: number = 1; //Index for fetching and storing multiple pages of events
       while (j > 0) { //While the length of the fetched array is 200
-        await this.eventService.getEvents(j) //Grab a page of events from Chargify
+        await this.eventService.getEvents(j, since_id) //Grab a page of events from Chargify
           .then(tempArray => { //Add it to the array of already-fetched events
             eventArrayFetch = eventArrayFetch.concat(tempArray);
             return tempArray
@@ -168,6 +173,24 @@ export class EventController {
     @param.filter(EventDb, {exclude: 'where'}) filter?: FilterExcludingWhere<EventDb>
   ): Promise<EventDb> {
     return this.eventDbRepository.findById(id, filter);
+  }
+
+  @get('/event-dbs/maxId')
+  @response(200, {
+    description: 'EventDb model instance',
+    content: {
+      'application/json': {
+        schema: getModelSchemaRef(EventDb, {includeRelations: true}),
+      },
+    },
+  })
+  async findMaxId(
+    // @param.path.number('id') id: number,
+    // @param.filter(EventDb, {exclude: 'where'}) filter?: FilterExcludingWhere<EventDb>
+  ): Promise<number> {
+    const filter: Filter<EventDb> = {"order": ["id DESC"], "limit": 1}
+    let maxEventItem = await this.eventDbRepository.find(filter)
+    return maxEventItem[0].id || 0;
   }
 
   @patch('/event-dbs/{id}')
