@@ -20,11 +20,11 @@ const config = {
     {
       template: {
         method: 'GET',
-        url: `https://${url}/events.json?date_field=created_at&filter=component_allocation_change,subscription_state_change&direction=asc&per_page=200&page={page}`,
+        url: `https://${url}/events.json?date_field=created_at&filter=component_allocation_change,subscription_state_change&direction=asc&per_page=200&page={page}&since_id={since_id}`,
       },
       functions:
       {
-        getEvents: ['page'],
+        getEvents: ['page', 'since_id'],
       }
     },
     {

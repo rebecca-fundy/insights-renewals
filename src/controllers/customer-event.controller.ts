@@ -78,7 +78,10 @@ export class CustomerEventController {
     // @inject(EventController)
     @inject('controllers.EventController')
     public eventController: EventController,
-  ) { }
+    // @inject(RestBindings.Http.RESPONSE)
+    // private response: Response
+  ) {
+  }
 
   @post('/customer-events')
   @response(200, {
@@ -192,16 +195,24 @@ export class CustomerEventController {
                 data[timePointKey] = true
                 peStatus = "off";
                 peAlreadyOff = true;
+                data.isActive = false
+                data.isTrialing = false
               } else if (event.previous_allocation == 0 && event.new_allocation == 1) {//Chargify generates this type of allocation event when a customer upgrades with PE on.
                 data[timePointKey] = false;
                 peStatus = "on"
                 peAlreadyOff = false
+                data.isActive = true
+                data.isTrialing = false
               } else if (event.new_subscription_state == "canceled" && !peAlreadyOff) {
                 data[timePointKey] = true
                 peAlreadyOff = true
+                data.isActive = false
+                data.isTrialing = false
               } else if (event.new_subscription_state == "active" && (peStatus == "on" || (data.productType !== "non-lease"))) {
                 data[timePointKey] = false
                 peAlreadyOff = false
+                data.isActive = true
+                data.isTrialing = false
               }
             }
 

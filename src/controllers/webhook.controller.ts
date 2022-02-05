@@ -14,6 +14,8 @@ import {
 import {ChargifyEvent, Customer, EventDb, Subscription} from '../models';
 import {ChargifyEventRepository, CustomerRepository, CustomerSandboxRepository, EventDbRepository, EventDbSandboxRepository, SubscriptionRepository, SubscriptionSandboxRepository} from '../repositories';
 import {Event} from '../services';
+import {CustomerEventController} from './customer-event.controller';
+import {EventController} from './event.controller';
 
 let isLive = process.env.CHARGIFY_ENV == "live";
 
@@ -34,8 +36,24 @@ export class WebhookController {
     @repository(CustomerSandboxRepository)
     public customerSandboxRepository: CustomerSandboxRepository,
     @inject('services.Event')
-    protected eventService: Event
+    protected eventService: Event,
+    @inject('controllers.EventController')
+    public eventController: EventController,
+    @inject('controllers.CustomerEventController')
+    public customerEventController: CustomerEventController,
   ) { }
+
+  async isRefreshTime(webhookDate: Date): Promise<boolean> {
+    let isNextDay = false
+    let previousEventId = await this.eventController.findMaxId();
+    let previousEvent = await this.eventController.findById(previousEventId);
+    let previousEventDate = previousEvent.created_at
+    var nextDayDate = new Date(previousEventDate.getFullYear(), previousEventDate.getMonth(), previousEventDate.getDate() + 1);
+    if (nextDayDate.getFullYear() == webhookDate.getFullYear() && nextDayDate.getMonth() == webhookDate.getMonth() && nextDayDate.getDate() == webhookDate.getDate()) {
+      isNextDay = true; // date2 is one day after date1.
+    }
+    return isNextDay
+  }
 
   @post('/webhook')
   @response(200, {
@@ -61,6 +79,7 @@ export class WebhookController {
     let subscription = payload["subscription"]
     let subscription_id = subscription["id"];
     let customer_id = 0;
+    let webhookDate = payload["timestamp"] || subscription["updated_at"]
     if (event == "component_allocation_change") {
       customer_id = isLive ?
         (await this.subscriptionRepository.customerId(subscription_id)).id
@@ -144,9 +163,23 @@ export class WebhookController {
           console.log(error.message)
         } finally { //Regardless, the subscription repo must get the new subscription info
           return this.subscriptionRepository.create(newSubscriptionData)
+            .then(async response => {
+              if ((await this.isRefreshTime(webhookDate)) == true) {
+                await this.customerEventController.refresh()
+              }
+              return response
+            }
+            )
         }
       } else { //Allocation and subscription state changes go in the event table.
         return this.eventDbRepository.create(eventDbData)
+          .then(async response => {
+            if ((await this.isRefreshTime(webhookDate)) == true) {
+              await this.customerEventController.refresh()
+            }
+            return response
+          }
+          )
       }
     } else {
       if (event == "signup_success") {
@@ -156,9 +189,23 @@ export class WebhookController {
           console.log(error.message)
         } finally {
           return this.subscriptionSandboxRepository.create(newSubscriptionData)
+            .then(async response => {
+              if ((await this.isRefreshTime(webhookDate)) == true) {
+                await this.customerEventController.refresh()
+              }
+              return response
+            }
+            )
         }
       } else {
         return this.eventDbSandboxRepository.create(eventDbData)
+          .then(async response => {
+            if ((await this.isRefreshTime(webhookDate)) == true) {
+              await this.customerEventController.refresh()
+            }
+            return response
+          }
+          )
       }
     }
   }
