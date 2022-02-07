@@ -116,8 +116,12 @@ export class WebhookController {
 
     //If it's not a lease product, query the Chargify API to find out if is on for the new subscription.
     if (!leaseProductIds.includes(product_id) && event == "signup_success") {
+      console.log(`${product_id} is not a lease product`);
       newSubscriptionData.peOn = await this.eventService.listComponents(subscription_id)
-        .then(components => components.filter(component => component.component.name == "Fundy Pro Enhancements"))
+        .then(components => {
+          let peComponent = components.filter(component => component.component.name == "Fundy Pro Enhancements"); console.log(`peComponent.length: ${peComponent.length}`);
+          return peComponent
+        })
         .then(pEcomponent => pEcomponent[0].component.enabled)
     }
 
