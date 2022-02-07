@@ -113,7 +113,7 @@ export class WebhookController {
 
     //[month lease live, month lease sandbox, year lease live, year lease sandbox]
     const leaseProductIds = [5874830, 5601362, 5135042, 5081978]
-
+    console.log('productId ' + product_id)
     //If it's not a lease product, query the Chargify API to find out if is on for the new subscription.
     if (!leaseProductIds.includes(product_id) && event == "signup_success") {
       console.log(`${product_id} is not a lease product`);
