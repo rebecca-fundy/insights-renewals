@@ -132,7 +132,7 @@ export class WebhookController {
       console.log(`${product_id} is not a lease product`);
       newSubscriptionData.peOn = await this.eventService.listComponents(subscription_id)
         .then(components => {
-          let peComponent = components.filter(component => component.component.name == "Fundy Pro Enhancements"); console.log(`peComponent.length: ${peComponent.length}`);
+          let peComponent = components.filter(component => component.component.name.includes("Fundy Pro Enhancements")); console.log(`peComponent.length: ${peComponent.length}`);
           return peComponent
         })
         .then(pEcomponent => pEcomponent[0].component.enabled)
