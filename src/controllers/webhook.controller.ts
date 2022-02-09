@@ -82,7 +82,7 @@ export class WebhookController {
     let subscription = payload["subscription"]
     let subscription_id = parseInt(subscription["id"], 10);
     let customer_id = 0;
-    let webhookDate = new Date(payload["timestamp"].trim()) || new Date(subscription["updated_at"].trim())
+    // let webhookDate = new Date(payload["timestamp"].trim()) || new Date(subscription["updated_at"].trim())
     let product_id = parseInt(subscription["product"]["id"], 10)
     let eventId = parseInt(payload["event_id"], 10)
     let eventCreationDate = event == "component_allocation_change" ? new Date(payload["timestamp"].trim()) : new Date(subscription["updated_at"].trim())
@@ -182,7 +182,7 @@ export class WebhookController {
         } finally { //Regardless, the subscription repo must get the new subscription info
           return this.subscriptionRepository.create(newSubscriptionData)
             .then(async response => {
-              if ((await this.isRefreshTime(webhookDate)) == true) {
+              if ((await this.isRefreshTime(eventCreationDate)) == true) {
                 await this.customerEventController.refresh()
               }
               return response
@@ -192,7 +192,7 @@ export class WebhookController {
       } else { //Allocation and subscription state changes go in the event table.
         return this.eventDbRepository.create(eventDbData)
           .then(async response => {
-            if ((await this.isRefreshTime(webhookDate)) == true) {
+            if ((await this.isRefreshTime(eventCreationDate)) == true) {
               await this.customerEventController.refresh()
             }
             return response
@@ -208,7 +208,7 @@ export class WebhookController {
         } finally {
           return this.subscriptionSandboxRepository.create(newSubscriptionData)
             .then(async response => {
-              if ((await this.isRefreshTime(webhookDate)) == true) {
+              if ((await this.isRefreshTime(eventCreationDate)) == true) {
                 await this.customerEventController.refresh()
               }
               return response
@@ -218,7 +218,7 @@ export class WebhookController {
       } else {
         return this.eventDbSandboxRepository.create(eventDbData)
           .then(async response => {
-            if ((await this.isRefreshTime(webhookDate)) == true) {
+            if ((await this.isRefreshTime(eventCreationDate)) == true) {
               await this.customerEventController.refresh()
             }
             return response
