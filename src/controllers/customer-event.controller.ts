@@ -17,6 +17,7 @@ import {CustomerEventRepository, CustomerEventSandboxRepository, CustomerReposit
 import {EventController} from './event.controller';
 
 let isLive: boolean = process.env.CHARGIFY_ENV == "live";
+let lastRefreshTime: Date;
 
 function addMonths(date: Date, months: number, i?: number): Date {
   let date2 = new Date(date) //Prevent overwrite of date parameter
@@ -314,9 +315,11 @@ export class CustomerEventController {
   })
   async refresh(
     @param.where(CustomerEvent) where?: Where<CustomerEvent>,
-  ): Promise<DropoffTable[]> {
+  ): Promise<DropoffTable[] | Date[]> {
     let customerEventTable = isLive ? 'CustomerEvent' : 'CustomerEventSandbox'
     console.log('hit dropoff')
+    lastRefreshTime = new Date();
+    console.log('last refresh time: ', lastRefreshTime)
     await this.customerEventRepository.execute(`TRUNCATE TABLE ${customerEventTable}`)
       .then(() => this.generateTable())
     return this.findDropOffs();
@@ -456,8 +459,8 @@ export class CustomerEventController {
   })
   async findDropOffs(
     @param.filter(CustomerEvent) filter?: Filter<CustomerEvent>,
-  ): Promise<DropoffTable[]> {
-    let dropoffArray: DropoffTable[] = []
+  ): Promise<DropoffTable[] | Date[]> {
+    let dropoffArray: DropoffTable[] | Date[] = []
     const productTypes = ["non-lease", "year lease", "month lease"];
 
     for (let i = 0; i < productTypes.length; i++) {
@@ -467,7 +470,7 @@ export class CustomerEventController {
       }
 
       let totalCust = (await this.find(productFilter));
-
+      console.log(productType, totalCust.length)
       if (productType == "non-lease") {
         dropoffArray[i] = this.generateProDropoffTable(totalCust)
       }
@@ -480,6 +483,7 @@ export class CustomerEventController {
         dropoffArray[i] = this.generateMonthlyDropoffTable(totalCust)
       }
     }
+    dropoffArray[productTypes.length] = lastRefreshTime;
     return dropoffArray;
   }
 

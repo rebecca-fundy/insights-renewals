@@ -74,40 +74,53 @@ export class WebhookController {
   ): Promise<EventDb | Subscription> {
     let payload = chargifyEvent.payload;
     let id = chargifyEvent.id;
-    let event = chargifyEvent.event
-    let subdomain = payload["site"]["subdomain"]
+    let event = chargifyEvent.event.trim()
+    let subdomain = payload["site"]["subdomain"].trim();
+    console.log('event ', event)
+    console.log('subdomain ' + subdomain)
+    console.log(event == "signup_success")
     let subscription = payload["subscription"]
-    let subscription_id = subscription["id"];
+    let subscription_id = parseInt(subscription["id"], 10);
     let customer_id = 0;
-    let webhookDate = payload["timestamp"] || subscription["updated_at"]
+    let webhookDate = new Date(payload["timestamp"].trim()) || new Date(subscription["updated_at"].trim())
+    let product_id = parseInt(subscription["product"]["id"], 10)
+    let eventId = parseInt(payload["event_id"], 10)
+    let eventCreationDate = event == "component_allocation_change" ? new Date(payload["timestamp"].trim()) : new Date(subscription["updated_at"].trim())
+    let previous_allocation = event == "component_allocation_change" ? parseInt(payload["previous_allocation"], 10) : undefined
+    let new_allocation = event == "component_allocation_change" ? parseInt(payload["new_allocation"], 10) : undefined
+    let allocation_id = event == "component_allocation_change" ? parseInt(payload["allocation"]["id"], 10) : undefined
+    let previous_subscription_state = event == "component_allocation_change" ? undefined : subscription["previous_state"].trim()
+    let new_subscription_state = event == "component_allocation_change" ? undefined : subscription["state"].trim()
+
     if (event == "component_allocation_change") {
       customer_id = isLive ?
         (await this.subscriptionRepository.customerId(subscription_id)).id
         : (await this.subscriptionSandboxRepository.customerSandboxId(subscription_id)).id
     } else {
-      customer_id = subscription["customer"]["id"]
+      customer_id = parseInt(subscription["customer"]["id"], 10)
     }
-    let product_id = subscription["product"]["id"]
 
     let eventDbData: Partial<EventDb> = {
-      id: payload["event_id"],
-      subscription_id: subscription["id"],
+      id: eventId,
+      subscription_id: subscription_id,
       customer_id: customer_id,
-      key: chargifyEvent.event,
-      created_at: payload["timestamp"] || subscription["updated_at"],
-      previous_allocation: payload["previous_allocation"],
-      new_allocation: payload["new_allocation"],
-      allocation_id: chargifyEvent.event == "component_allocation_change" ? payload["allocation"]["id"] : null,
-      previous_subscription_state: subscription["previous_state"],
-      new_subscription_state: subscription["state"]
+      key: event,
+      created_at: eventCreationDate,
+      previous_allocation: previous_allocation,
+      new_allocation: new_allocation,
+      allocation_id: allocation_id,
+      previous_subscription_state: previous_subscription_state,
+      new_subscription_state: new_subscription_state
     }
 
+    console.log(eventDbData)
+
     let newSubscriptionData: Partial<Subscription> = {
-      id: subscription["id"],
-      created_at: subscription["created_at"],
+      id: subscription_id,
+      created_at: eventCreationDate,
       product_id: product_id,
       customer_id: customer_id,
-      state: subscription["state"],
+      state: new_subscription_state,
       peOn: true //For lease products, this will be synonymous with an active subscription. Non-lease products will be set by the routine below.
     }
 
@@ -126,16 +139,16 @@ export class WebhookController {
     }
 
     let subscriptionStateChangeData: Partial<Subscription> = {
-      state: subscription["state"]
+      state: new_subscription_state
     }
 
     let togglePeData: Partial<Subscription> = {
-      peOn: payload["new_allocation"]
+      peOn: new_allocation == 0 ? false : true
     }
 
     let customerData: Partial<Customer> = {
       id: customer_id,
-      created_at: event == "signup_success" ? new Date(subscription["customer"]["created_at"]) : undefined
+      created_at: event == "signup_success" ? new Date(eventCreationDate) : undefined
     }
 
     //For subscription state changes, there will already be a subscription, so it will be updated.
@@ -162,6 +175,7 @@ export class WebhookController {
     if (subdomain == "fundy-suite") {
       if (event == "signup_success") { //A signup success may be a new customer, or an upgrade for an existing customer.
         try { //If the customer id already exists in the customer repo this will throw an error
+          console.log('signup_success')
           await this.customerRepository.create(customerData)
         } catch (error) {
           console.log(error.message)

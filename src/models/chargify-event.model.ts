@@ -1,6 +1,6 @@
 import {Entity, model, property} from '@loopback/repository';
 
-@model({settings: {strict: false}})
+@model()
 export class ChargifyEvent extends Entity {
   @property({
     type: 'string',
