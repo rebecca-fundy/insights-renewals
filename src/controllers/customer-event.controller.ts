@@ -134,7 +134,9 @@ export class CustomerEventController {
         .then(async customerArray => {
           for (let i = 0; i < customerArray.length; i++) {
             let customer = customerArray[i]; //For each customer in the customer array...
-            let customerEvents = eventArray.filter(event => event.customer_id == customer.id) //Filter the events array to events for this customer
+            let indicesToSplice: number[] = [];
+            let customerEvents = eventArray.filter((event, index) => {if (event.customer_id == customer.id) {indicesToSplice.push(index); return event} }) //Filter the events array to events for this customer
+            indicesToSplice.reverse().forEach(index => eventArray.splice(index, 1))
             let products = subscriptionArray.filter(subscription => subscription.customer_id === customer.id).sort() //List customer subscriptions oldest to newest
             let hasProduct = products.length //Filter condition for customers with no subscriptions
             const custCreationDate = !hasProduct ? new Date(customer.created_at) : new Date(products[0].created_at); //Set the customer creation date to the creation date of the first subscription. This will be the date that all the timepoints will be measured from. (If no subscriptions, it will be the customer creation date.)
