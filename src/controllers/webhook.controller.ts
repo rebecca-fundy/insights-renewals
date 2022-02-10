@@ -75,7 +75,7 @@ export class WebhookController {
       },
     })
     chargifyEvent: any,
-  ): Promise<EventDb | Subscription> {
+  ): Promise<Partial<EventDb> | Subscription> {
     let payload = chargifyEvent.payload;
     let id = chargifyEvent.id;
     let event = chargifyEvent.event.trim()
@@ -197,15 +197,25 @@ export class WebhookController {
             )
         }
       } else { //Allocation and subscription state changes go in the event table.
-        return this.eventDbRepository.create(eventDbData)
-          .then(async response => {
-            if ((await this.isRefreshTime(eventCreationDate, previousEventId)) == true) {
-              console.log('refreshing')
-              this.customerEventController.refresh()
-            }
-            return response
+        try {
+          await this.eventDbRepository.create(eventDbData)
+        } catch (error) {
+          console.log(error.message)
+        } finally {
+          if ((await this.isRefreshTime(eventCreationDate, previousEventId)) == true) {
+            console.log('refreshing')
+            this.customerEventController.refresh()
           }
-          )
+          return eventDbData;
+        }
+        // .then(async response => {
+        //   if ((await this.isRefreshTime(eventCreationDate, previousEventId)) == true) {
+        //     console.log('refreshing')
+        //     this.customerEventController.refresh()
+        //   }
+        // return response
+        // }
+        // )
       }
     } else {
       if (event == "signup_success") {
@@ -224,14 +234,17 @@ export class WebhookController {
             )
         }
       } else {
-        return this.eventDbSandboxRepository.create(eventDbData)
-          .then(async response => {
-            if ((await this.isRefreshTime(eventCreationDate, previousEventId)) == true) {
-              this.customerEventController.refresh()
-            }
-            return response
+        try {
+          await this.eventDbSandboxRepository.create(eventDbData)
+        } catch (error) {
+          console.log(error.message)
+        } finally {
+          if ((await this.isRefreshTime(eventCreationDate, previousEventId)) == true) {
+            console.log('refreshing')
+            this.customerEventController.refresh()
           }
-          )
+          return eventDbData;
+        }
       }
     }
   }
