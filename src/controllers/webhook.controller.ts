@@ -190,7 +190,7 @@ export class WebhookController {
           return this.subscriptionRepository.create(newSubscriptionData)
             .then(async response => {
               if ((await this.isRefreshTime(eventCreationDate, previousEventId)) == true) {
-                await this.customerEventController.refresh()
+                this.customerEventController.refresh()
               }
               return response
             }
@@ -201,7 +201,7 @@ export class WebhookController {
           .then(async response => {
             if ((await this.isRefreshTime(eventCreationDate, previousEventId)) == true) {
               console.log('refreshing')
-              await this.customerEventController.refresh()
+              this.customerEventController.refresh()
             }
             return response
           }
@@ -217,7 +217,7 @@ export class WebhookController {
           return this.subscriptionSandboxRepository.create(newSubscriptionData)
             .then(async response => {
               if ((await this.isRefreshTime(eventCreationDate, previousEventId)) == true) {
-                await this.customerEventController.refresh()
+                this.customerEventController.refresh()
               }
               return response
             }
@@ -227,7 +227,7 @@ export class WebhookController {
         return this.eventDbSandboxRepository.create(eventDbData)
           .then(async response => {
             if ((await this.isRefreshTime(eventCreationDate, previousEventId)) == true) {
-              await this.customerEventController.refresh()
+              this.customerEventController.refresh()
             }
             return response
           }
