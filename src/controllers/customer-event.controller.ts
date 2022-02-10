@@ -13,11 +13,10 @@ import {
   response
 } from '@loopback/rest';
 import {CustomerEvent, EventDb, Subscription, SubscriptionRelations} from '../models';
-import {CustomerEventRepository, CustomerEventSandboxRepository, CustomerRepository, CustomerSandboxRepository, DropoffRow, DropoffTable, EventDbRepository, EventDbSandboxRepository, SubscriptionRepository, SubscriptionSandboxRepository} from '../repositories';
+import {CustomerEventRepository, CustomerEventSandboxRepository, CustomerRepository, CustomerSandboxRepository, DropoffRow, DropoffTable, EventDbRepository, EventDbSandboxRepository, RefreshRepository, SubscriptionRepository, SubscriptionSandboxRepository} from '../repositories';
 import {EventController} from './event.controller';
 
 let isLive: boolean = process.env.CHARGIFY_ENV == "live";
-let lastRefreshTime: Date;
 
 function addMonths(date: Date, months: number, i?: number): Date {
   let date2 = new Date(date) //Prevent overwrite of date parameter
@@ -76,6 +75,8 @@ export class CustomerEventController {
     public eventDbRepository: EventDbRepository,
     @repository(EventDbSandboxRepository)
     public eventDbSandboxRepository: EventDbSandboxRepository,
+    @repository(RefreshRepository)
+    public refreshRepository: RefreshRepository,
     // @inject(EventController)
     @inject('controllers.EventController')
     public eventController: EventController,
@@ -319,9 +320,8 @@ export class CustomerEventController {
     @param.where(CustomerEvent) where?: Where<CustomerEvent>,
   ): Promise<DropoffTable[] | Date[]> {
     let customerEventTable = isLive ? 'CustomerEvent' : 'CustomerEventSandbox'
-    console.log('hit dropoff')
-    lastRefreshTime = new Date();
-    console.log('last refresh time: ', lastRefreshTime)
+    console.log('hit refresh')
+    await this.refreshRepository.create({refreshDate: new Date()});
     await this.customerEventRepository.execute(`TRUNCATE TABLE ${customerEventTable}`)
       .then(() => this.generateTable())
     return this.findDropOffs();
@@ -485,7 +485,7 @@ export class CustomerEventController {
         dropoffArray[i] = this.generateMonthlyDropoffTable(totalCust)
       }
     }
-    dropoffArray[productTypes.length] = lastRefreshTime;
+    dropoffArray[productTypes.length] = (await this.refreshRepository.find({"order": ["idRefresh DESC"], "limit": 1}))[0].refreshDate
     return dropoffArray;
   }
 
