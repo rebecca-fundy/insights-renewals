@@ -43,15 +43,19 @@ export class WebhookController {
     public customerEventController: CustomerEventController,
   ) { }
 
-  async isRefreshTime(webhookDate: Date): Promise<boolean> {
+  async isRefreshTime(webhookDate: Date, previousEventId: number): Promise<boolean> {
     let isNextDay = false
-    let previousEventId = await this.eventController.findMaxId();
+    // let previousEventId = await this.eventController.findMaxId();
     let previousEvent = await this.eventController.findById(previousEventId);
     let previousEventDate = previousEvent.created_at
+    console.log('previousEventId: ', previousEventId, 'previousEventDate ', previousEventDate)
     var nextDayDate = new Date(previousEventDate.getFullYear(), previousEventDate.getMonth(), previousEventDate.getDate() + 1);
+    console.log('nextDayDate ', nextDayDate);
+
     if (nextDayDate.getFullYear() == webhookDate.getFullYear() && nextDayDate.getMonth() == webhookDate.getMonth() && nextDayDate.getDate() == webhookDate.getDate()) {
       isNextDay = true; // date2 is one day after date1.
     }
+    console.log('isNextDay ', isNextDay)
     return isNextDay
   }
 
@@ -82,7 +86,7 @@ export class WebhookController {
     let subscription = payload["subscription"]
     let subscription_id = parseInt(subscription["id"], 10);
     let customer_id = 0;
-    let webhookDate = new Date(payload["timestamp"].trim()) || new Date(subscription["updated_at"].trim())
+    // let webhookDate = new Date(payload["timestamp"].trim()) || new Date(subscription["updated_at"].trim())
     let product_id = parseInt(subscription["product"]["id"], 10)
     let eventId = parseInt(payload["event_id"], 10)
     let eventCreationDate = event == "component_allocation_change" ? new Date(payload["timestamp"].trim()) : new Date(subscription["updated_at"].trim())
@@ -91,6 +95,9 @@ export class WebhookController {
     let allocation_id = event == "component_allocation_change" ? parseInt(payload["allocation"]["id"], 10) : undefined
     let previous_subscription_state = event == "component_allocation_change" ? undefined : subscription["previous_state"].trim()
     let new_subscription_state = event == "component_allocation_change" ? undefined : subscription["state"].trim()
+    let previousEventId = await this.eventController.findMaxId();
+    console.log('maxId ', previousEventId)
+
 
     if (event == "component_allocation_change") {
       customer_id = isLive ?
@@ -182,7 +189,7 @@ export class WebhookController {
         } finally { //Regardless, the subscription repo must get the new subscription info
           return this.subscriptionRepository.create(newSubscriptionData)
             .then(async response => {
-              if ((await this.isRefreshTime(webhookDate)) == true) {
+              if ((await this.isRefreshTime(eventCreationDate, previousEventId)) == true) {
                 await this.customerEventController.refresh()
               }
               return response
@@ -192,7 +199,8 @@ export class WebhookController {
       } else { //Allocation and subscription state changes go in the event table.
         return this.eventDbRepository.create(eventDbData)
           .then(async response => {
-            if ((await this.isRefreshTime(webhookDate)) == true) {
+            if ((await this.isRefreshTime(eventCreationDate, previousEventId)) == true) {
+              console.log('refreshing')
               await this.customerEventController.refresh()
             }
             return response
@@ -208,7 +216,7 @@ export class WebhookController {
         } finally {
           return this.subscriptionSandboxRepository.create(newSubscriptionData)
             .then(async response => {
-              if ((await this.isRefreshTime(webhookDate)) == true) {
+              if ((await this.isRefreshTime(eventCreationDate, previousEventId)) == true) {
                 await this.customerEventController.refresh()
               }
               return response
@@ -218,7 +226,7 @@ export class WebhookController {
       } else {
         return this.eventDbSandboxRepository.create(eventDbData)
           .then(async response => {
-            if ((await this.isRefreshTime(webhookDate)) == true) {
+            if ((await this.isRefreshTime(eventCreationDate, previousEventId)) == true) {
               await this.customerEventController.refresh()
             }
             return response
