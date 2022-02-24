@@ -1,3 +1,4 @@
+import fs from 'fs';
 import {ApplicationConfig, V4InsightsApplication} from './application';
 // const dotenv = require('dotenv').config();
 export * from './application';
@@ -28,6 +29,11 @@ if (require.main === module) {
         // useful when used with OpenAPI-to-GraphQL to locate your application
         setServersFromRequest: true,
       },
+
+      // Enable HTTPS
+      protocol: 'https',
+      key: fs.readFileSync('/etc/apache2/ssl/STAR_fundycentral.key'),
+      cert: fs.readFileSync('/etc/apache2/ssl/STAR_fundycentral_com.crt'),
     },
   };
   main(config).catch(err => {
