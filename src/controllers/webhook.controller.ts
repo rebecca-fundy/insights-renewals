@@ -186,15 +186,15 @@ export class WebhookController {
           await this.customerRepository.create(customerData)
         } catch (error) {
           console.log(error.message)
+        } try {
+          await this.subscriptionRepository.create(newSubscriptionData)
+        } catch (error) {
+          console.log(error)
         } finally { //Regardless, the subscription repo must get the new subscription info
-          return this.subscriptionRepository.create(newSubscriptionData)
-            .then(async response => {
-              if ((await this.isRefreshTime(eventCreationDate, previousEventId)) == true) {
-                this.customerEventController.refresh()
-              }
-              return response
-            }
-            )
+          if ((await this.isRefreshTime(eventCreationDate, previousEventId)) == true) {
+            this.customerEventController.refresh()
+          }
+          return newSubscriptionData
         }
       } else { //Allocation and subscription state changes go in the event table.
         try {
@@ -211,19 +211,20 @@ export class WebhookController {
       }
     } else {
       if (event == "signup_success") {
-        try {
+        try { //If the customer id already exists in the customer repo this will throw an error
+          console.log('signup_success')
           await this.customerSandboxRepository.create(customerData)
         } catch (error) {
           console.log(error.message)
-        } finally {
-          return this.subscriptionSandboxRepository.create(newSubscriptionData)
-            .then(async response => {
-              if ((await this.isRefreshTime(eventCreationDate, previousEventId)) == true) {
-                this.customerEventController.refresh()
-              }
-              return response
-            }
-            )
+        } try {
+          await this.subscriptionSandboxRepository.create(newSubscriptionData)
+        } catch (error) {
+          console.log(error)
+        } finally { //Regardless, the subscription repo must get the new subscription info
+          if ((await this.isRefreshTime(eventCreationDate, previousEventId)) == true) {
+            this.customerEventController.refresh()
+          }
+          return newSubscriptionData
         }
       } else {
         try {
