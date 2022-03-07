@@ -2,14 +2,12 @@ import {inject} from '@loopback/core';
 import {
   Count,
   CountSchema,
-  Filter,
-  FilterExcludingWhere,
-  repository,
+  Filter, repository,
   Where
 } from '@loopback/repository';
 import {
-  del, get,
-  getModelSchemaRef, param, patch, post, put, requestBody,
+  get,
+  getModelSchemaRef, param, post, requestBody,
   response
 } from '@loopback/rest';
 import {CustomerEvent, EventDb, Subscription, SubscriptionRelations} from '../models';
@@ -490,75 +488,75 @@ export class CustomerEventController {
   }
 
 
-  @patch('/customer-events')
-  @response(200, {
-    description: 'CustomerEvent PATCH success count',
-    content: {'application/json': {schema: CountSchema}},
-  })
-  async updateAll(
-    @requestBody({
-      content: {
-        'application/json': {
-          schema: getModelSchemaRef(CustomerEvent, {partial: true}),
-        },
-      },
-    })
-    customerEvent: CustomerEvent,
-    @param.where(CustomerEvent) where?: Where<CustomerEvent>,
-  ): Promise<Count> {
-    return this.customerEventRepository.updateAll(customerEvent, where);
-  }
+  // @patch('/customer-events')
+  // @response(200, {
+  //   description: 'CustomerEvent PATCH success count',
+  //   content: {'application/json': {schema: CountSchema}},
+  // })
+  // async updateAll(
+  //   @requestBody({
+  //     content: {
+  //       'application/json': {
+  //         schema: getModelSchemaRef(CustomerEvent, {partial: true}),
+  //       },
+  //     },
+  //   })
+  //   customerEvent: CustomerEvent,
+  //   @param.where(CustomerEvent) where?: Where<CustomerEvent>,
+  // ): Promise<Count> {
+  //   return this.customerEventRepository.updateAll(customerEvent, where);
+  // }
 
-  @get('/customer-events/{id}')
-  @response(200, {
-    description: 'CustomerEvent model instance',
-    content: {
-      'application/json': {
-        schema: getModelSchemaRef(CustomerEvent, {includeRelations: true}),
-      },
-    },
-  })
-  async findById(
-    @param.path.number('id') id: number,
-    @param.filter(CustomerEvent, {exclude: 'where'}) filter?: FilterExcludingWhere<CustomerEvent>
-  ): Promise<CustomerEvent> {
-    return this.customerEventRepository.findById(id, filter);
-  }
+  // @get('/customer-events/{id}')
+  // @response(200, {
+  //   description: 'CustomerEvent model instance',
+  //   content: {
+  //     'application/json': {
+  //       schema: getModelSchemaRef(CustomerEvent, {includeRelations: true}),
+  //     },
+  //   },
+  // })
+  // async findById(
+  //   @param.path.number('id') id: number,
+  //   @param.filter(CustomerEvent, {exclude: 'where'}) filter?: FilterExcludingWhere<CustomerEvent>
+  // ): Promise<CustomerEvent> {
+  //   return this.customerEventRepository.findById(id, filter);
+  // }
 
-  @patch('/customer-events/{id}')
-  @response(204, {
-    description: 'CustomerEvent PATCH success',
-  })
-  async updateById(
-    @param.path.number('id') id: number,
-    @requestBody({
-      content: {
-        'application/json': {
-          schema: getModelSchemaRef(CustomerEvent, {partial: true}),
-        },
-      },
-    })
-    customerEvent: CustomerEvent,
-  ): Promise<void> {
-    await this.customerEventRepository.updateById(id, customerEvent);
-  }
+  // @patch('/customer-events/{id}')
+  // @response(204, {
+  //   description: 'CustomerEvent PATCH success',
+  // })
+  // async updateById(
+  //   @param.path.number('id') id: number,
+  //   @requestBody({
+  //     content: {
+  //       'application/json': {
+  //         schema: getModelSchemaRef(CustomerEvent, {partial: true}),
+  //       },
+  //     },
+  //   })
+  //   customerEvent: CustomerEvent,
+  // ): Promise<void> {
+  //   await this.customerEventRepository.updateById(id, customerEvent);
+  // }
 
-  @put('/customer-events/{id}')
-  @response(204, {
-    description: 'CustomerEvent PUT success',
-  })
-  async replaceById(
-    @param.path.number('id') id: number,
-    @requestBody() customerEvent: CustomerEvent,
-  ): Promise<void> {
-    await this.customerEventRepository.replaceById(id, customerEvent);
-  }
+  // @put('/customer-events/{id}')
+  // @response(204, {
+  //   description: 'CustomerEvent PUT success',
+  // })
+  // async replaceById(
+  //   @param.path.number('id') id: number,
+  //   @requestBody() customerEvent: CustomerEvent,
+  // ): Promise<void> {
+  //   await this.customerEventRepository.replaceById(id, customerEvent);
+  // }
 
-  @del('/customer-events/{id}')
-  @response(204, {
-    description: 'CustomerEvent DELETE success',
-  })
-  async deleteById(@param.path.number('id') id: number): Promise<void> {
-    await this.customerEventRepository.deleteById(id);
-  }
+  // @del('/customer-events/{id}')
+  // @response(204, {
+  //   description: 'CustomerEvent DELETE success',
+  // })
+  // async deleteById(@param.path.number('id') id: number): Promise<void> {
+  //   await this.customerEventRepository.deleteById(id);
+  // }
 }

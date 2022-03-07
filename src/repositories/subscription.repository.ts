@@ -1,8 +1,13 @@
-import {inject, Getter} from '@loopback/core';
-import {DefaultCrudRepository, repository, BelongsToAccessor} from '@loopback/repository';
+import {Getter, inject} from '@loopback/core';
+import {BelongsToAccessor, DefaultCrudRepository, repository} from '@loopback/repository';
 import {DbDataSource} from '../datasources';
-import {Subscription, SubscriptionRelations, Customer} from '../models';
+import {Customer, Subscription, SubscriptionRelations} from '../models';
 import {CustomerRepository} from './customer.repository';
+
+export interface DateFilter {
+  since: Date,
+  until: Date
+}
 
 export class SubscriptionRepository extends DefaultCrudRepository<
   Subscription,

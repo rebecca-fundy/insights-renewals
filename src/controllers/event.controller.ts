@@ -2,14 +2,12 @@ import {inject} from '@loopback/core';
 import {
   Count,
   CountSchema,
-  Filter,
-  FilterExcludingWhere,
-  repository,
+  Filter, FilterExcludingWhere, repository,
   Where
 } from '@loopback/repository';
 import {
-  del, get,
-  getModelSchemaRef, param, patch, post, put, requestBody,
+  get,
+  getModelSchemaRef, param, post, requestBody,
   response
 } from '@loopback/rest';
 import {EventDb} from '../models';
@@ -140,24 +138,24 @@ export class EventController {
     }
   }
 
-  @patch('/event-dbs')
-  @response(200, {
-    description: 'EventDb PATCH success count',
-    content: {'application/json': {schema: CountSchema}},
-  })
-  async updateAll(
-    @requestBody({
-      content: {
-        'application/json': {
-          schema: getModelSchemaRef(EventDb, {partial: true}),
-        },
-      },
-    })
-    eventDb: EventDb,
-    @param.where(EventDb) where?: Where<EventDb>,
-  ): Promise<Count> {
-    return this.eventDbRepository.updateAll(eventDb, where);
-  }
+  // @patch('/event-dbs')
+  // @response(200, {
+  //   description: 'EventDb PATCH success count',
+  //   content: {'application/json': {schema: CountSchema}},
+  // })
+  // async updateAll(
+  //   @requestBody({
+  //     content: {
+  //       'application/json': {
+  //         schema: getModelSchemaRef(EventDb, {partial: true}),
+  //       },
+  //     },
+  //   })
+  //   eventDb: EventDb,
+  //   @param.where(EventDb) where?: Where<EventDb>,
+  // ): Promise<Count> {
+  //   return this.eventDbRepository.updateAll(eventDb, where);
+  // }
 
   @get('/event-dbs/{id}')
   @response(200, {
@@ -193,40 +191,40 @@ export class EventController {
     return maxEventItem[0].id || 0;
   }
 
-  @patch('/event-dbs/{id}')
-  @response(204, {
-    description: 'EventDb PATCH success',
-  })
-  async updateById(
-    @param.path.number('id') id: number,
-    @requestBody({
-      content: {
-        'application/json': {
-          schema: getModelSchemaRef(EventDb, {partial: true}),
-        },
-      },
-    })
-    eventDb: EventDb,
-  ): Promise<void> {
-    await this.eventDbRepository.updateById(id, eventDb);
-  }
+  // @patch('/event-dbs/{id}')
+  // @response(204, {
+  //   description: 'EventDb PATCH success',
+  // })
+  // async updateById(
+  //   @param.path.number('id') id: number,
+  //   @requestBody({
+  //     content: {
+  //       'application/json': {
+  //         schema: getModelSchemaRef(EventDb, {partial: true}),
+  //       },
+  //     },
+  //   })
+  //   eventDb: EventDb,
+  // ): Promise<void> {
+  //   await this.eventDbRepository.updateById(id, eventDb);
+  // }
 
-  @put('/event-dbs/{id}')
-  @response(204, {
-    description: 'EventDb PUT success',
-  })
-  async replaceById(
-    @param.path.number('id') id: number,
-    @requestBody() eventDb: EventDb,
-  ): Promise<void> {
-    await this.eventDbRepository.replaceById(id, eventDb);
-  }
+  // @put('/event-dbs/{id}')
+  // @response(204, {
+  //   description: 'EventDb PUT success',
+  // })
+  // async replaceById(
+  //   @param.path.number('id') id: number,
+  //   @requestBody() eventDb: EventDb,
+  // ): Promise<void> {
+  //   await this.eventDbRepository.replaceById(id, eventDb);
+  // }
 
-  @del('/event-dbs/{id}')
-  @response(204, {
-    description: 'EventDb DELETE success',
-  })
-  async deleteById(@param.path.number('id') id: number): Promise<void> {
-    await this.eventDbRepository.deleteById(id);
-  }
+  // @del('/event-dbs/{id}')
+  // @response(204, {
+  //   description: 'EventDb DELETE success',
+  // })
+  // async deleteById(@param.path.number('id') id: number): Promise<void> {
+  //   await this.eventDbRepository.deleteById(id);
+  // }
 }

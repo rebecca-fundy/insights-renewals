@@ -34,6 +34,30 @@ export class Subscription extends Entity {
   })
   peOn: boolean;
 
+  @property({
+    type: 'date',
+    generated: false,
+  })
+  next_assessment_at: Date;
+
+  @property({
+    type: 'number',
+    generated: false,
+  })
+  est_renew_amt: number;
+
+  @property({
+    type: 'number',
+    generated: false,
+  })
+  cc_exp_month: number;
+
+  @property({
+    type: 'number',
+    generated: false,
+  })
+  cc_exp_year: number;
+
   @belongsTo(() => Customer, {name: 'customerId'})
   customer_id: number;
 
