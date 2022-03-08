@@ -52,7 +52,7 @@ export class ProjectedRevenueController {
     return this.subscriptionRepository.count(where);
   }
 
-  @get('/projected-revenue/{since}/{until}')
+  @get('/projected-revenue')
   @response(200, {
     description: 'Array of Subscription model instances',
     content: {
@@ -65,15 +65,24 @@ export class ProjectedRevenueController {
     },
   })
   async find(
-    @param.path.date('since') since?: Date,
-    @param.path.date('until') until?: Date,
+    @param.query.date('since') since?: Date,
+    @param.query.date('until') until?: Date,
     @param.filter(Subscription) filter?: Filter<Subscription>,
   ): Promise<Subscription[]> {
     let today = new Date();
     let firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
     let lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0)
 
-    console.log('param.where.since: ', since)
+    if (!since) {
+      since = firstDay;
+    }
+
+    if (!until) {
+      until = new Date(since.getFullYear(), since.getMonth() + 1, 0)
+    }
+    console.log('param..since: ', since)
+    console.log('param.until: ', until)
+
 
     // let since = new Date(filter?.where?.since)
     return this.subscriptionRepository.find(filter);
