@@ -85,19 +85,16 @@ export class ProjectedRevenueController {
     if (!since) {
       since = firstDay;
     }
-    console.log('since month: ' + since.getUTCMonth())
+    // console.log('since month: ' + since.getUTCMonth())
     if (!until) {
       until = new Date(since.getUTCFullYear(), since.getUTCMonth() + 1, 0);
-      // if (until < since) {
-      //   until = new Date(since.getFullYear(), since.getMonth() + 2, 0)
-      // }
     }
 
     let sinceYear = since.getUTCFullYear();
     let sinceMonth = since.getUTCMonth() + 1;
 
-    console.log('param.since: ', since)
-    console.log('param.until: ', until)
+    // console.log('param.since: ', since)
+    // console.log('param.until: ', until)
     let monthLeaseSubs = await this.subscriptionRepository.find({
       where: {
         and: [
@@ -110,10 +107,10 @@ export class ProjectedRevenueController {
       .then(result => result.filter(sub => sub.cc_exp_year == 0 || sub.cc_exp_year > sinceYear || (sub.cc_exp_year == sinceYear && sub.cc_exp_month > sinceMonth)));
 
     for (let sub of monthLeaseSubs) {
-      if (sub.cc_exp_year == sinceYear) {
-        console.log(sinceMonth, sinceYear);
-        console.log(sub.id, sub.cc_exp_month, sub.cc_exp_year)
-      }
+      // if (sub.cc_exp_year == sinceYear) {
+      //   console.log(sinceMonth, sinceYear);
+      //   console.log(sub.id, sub.cc_exp_month, sub.cc_exp_year)
+      // }
       monthRenewAmt += sub.est_renew_amt
     }
 
