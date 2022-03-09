@@ -76,7 +76,7 @@ export class ProjectedRevenueController {
     @param.filter(Subscription) filter?: Filter<Subscription>,
   ): Promise<Subscription[]> {
     let today = new Date();
-    let firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+    let firstDay = new Date(today.getUTCFullYear(), today.getUTCMonth(), 1);
     let monthRenewAmt: number = 0
     let yearRenewAmt = 0
     let peRenewAmt = 0
@@ -85,10 +85,16 @@ export class ProjectedRevenueController {
     if (!since) {
       since = firstDay;
     }
-
+    console.log('since month: ' + since.getUTCMonth())
     if (!until) {
-      until = new Date(since.getFullYear(), since.getMonth() + 1, 0)
+      until = new Date(since.getUTCFullYear(), since.getUTCMonth() + 1, 0);
+      // if (until < since) {
+      //   until = new Date(since.getFullYear(), since.getMonth() + 2, 0)
+      // }
     }
+
+    let sinceYear = since.getUTCFullYear();
+    let sinceMonth = since.getUTCMonth() + 1;
 
     console.log('param.since: ', since)
     console.log('param.until: ', until)
@@ -100,9 +106,14 @@ export class ProjectedRevenueController {
           {product_id: 5874830},
         ]
       }
-    });
+    })
+      .then(result => result.filter(sub => sub.cc_exp_year == 0 || sub.cc_exp_year > sinceYear || (sub.cc_exp_year == sinceYear && sub.cc_exp_month > sinceMonth)));
 
     for (let sub of monthLeaseSubs) {
+      if (sub.cc_exp_year == sinceYear) {
+        console.log(sinceMonth, sinceYear);
+        console.log(sub.id, sub.cc_exp_month, sub.cc_exp_year)
+      }
       monthRenewAmt += sub.est_renew_amt
     }
 
@@ -115,7 +126,8 @@ export class ProjectedRevenueController {
           {product_id: 5135042},
         ]
       }
-    });
+    })
+      .then(result => result.filter(sub => sub.cc_exp_year == 0 || sub.cc_exp_year > sinceYear || (sub.cc_exp_year == sinceYear && sub.cc_exp_month > sinceMonth)));
 
     for (let sub of yearLeaseSubs) {
       yearRenewAmt += sub.est_renew_amt
@@ -130,8 +142,8 @@ export class ProjectedRevenueController {
           {peOn: true}
         ]
       }
-
-    });
+    })
+      .then(result => result.filter(sub => sub.cc_exp_year == 0 || sub.cc_exp_year > sinceYear || (sub.cc_exp_year == sinceYear && sub.cc_exp_month > sinceMonth)));
 
     for (let sub of peSubs) {
       peRenewAmt += sub.est_renew_amt
