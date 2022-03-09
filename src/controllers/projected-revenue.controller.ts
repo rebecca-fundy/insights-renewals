@@ -14,6 +14,12 @@ import {
 import {Subscription} from '../models';
 import {SubscriptionRepository} from '../repositories';
 
+// class SubscriptionArray extends <Subscription>[] {
+//   sum(key: any) : number {
+//     return this.reduce((a,b) => a + (b[key] || 0),0)
+//   }
+// }
+
 export class ProjectedRevenueController {
   constructor(
     @repository(SubscriptionRepository)
@@ -71,7 +77,10 @@ export class ProjectedRevenueController {
   ): Promise<Subscription[]> {
     let today = new Date();
     let firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-    let lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+    let monthRenewAmt: number = 0
+    let yearRenewAmt = 0
+    let peRenewAmt = 0
+    let subCount = (await (this.subscriptionRepository.count())).count
 
     if (!since) {
       since = firstDay;
@@ -80,12 +89,62 @@ export class ProjectedRevenueController {
     if (!until) {
       until = new Date(since.getFullYear(), since.getMonth() + 1, 0)
     }
-    console.log('param..since: ', since)
+
+    console.log('param.since: ', since)
     console.log('param.until: ', until)
+    let monthLeaseSubs = await this.subscriptionRepository.find({
+      where: {
+        and: [
+          {next_assessment_at: {between: [since, until]}},
+          {state: "active"},
+          {product_id: 5874830},
+        ]
+      }
+    });
+
+    for (let sub of monthLeaseSubs) {
+      monthRenewAmt += sub.est_renew_amt
+    }
 
 
-    // let since = new Date(filter?.where?.since)
-    return this.subscriptionRepository.find(filter);
+    let yearLeaseSubs = await this.subscriptionRepository.find({
+      where: {
+        and: [
+          {next_assessment_at: {between: [since, until]}},
+          {state: "active"},
+          {product_id: 5135042},
+        ]
+      }
+    });
+
+    for (let sub of yearLeaseSubs) {
+      yearRenewAmt += sub.est_renew_amt
+    }
+
+    let peSubs = await this.subscriptionRepository.find({
+      where: {
+        and: [
+          {next_assessment_at: {between: [since, until]}},
+          {or: [{state: "active"}, {state: "trialing"}]},
+          {product_id: {nin: [5874830, 5135042]}},
+          {peOn: true}
+        ]
+      }
+
+    });
+
+    for (let sub of peSubs) {
+      peRenewAmt += sub.est_renew_amt
+    }
+    console.log('total sub count: ' + subCount)
+    console.log('monthLeaseSubs.length: ' + monthLeaseSubs.length)
+    console.log('monthLeaseSubs.total: ' + monthRenewAmt)
+    console.log('yearLeaseSubs.length: ' + yearLeaseSubs.length)
+    console.log('yearLeaseSubs.total: ' + yearRenewAmt)
+    console.log('peSubs.length: ' + peSubs.length)
+    console.log('peSubs.total: ' + peRenewAmt)
+
+    return monthLeaseSubs
   }
 
   @patch('/projected-revenue')

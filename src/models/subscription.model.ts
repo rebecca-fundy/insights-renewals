@@ -71,3 +71,4 @@ export interface SubscriptionRelations {
 }
 
 export type SubscriptionWithRelations = Subscription & SubscriptionRelations;
+
