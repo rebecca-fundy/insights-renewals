@@ -12,7 +12,7 @@ import {
   response
 } from '@loopback/rest';
 import {Subscription} from '../models';
-import {SubscriptionRepository} from '../repositories';
+import {ProjectionReport, SubscriptionRepository} from '../repositories';
 
 // class SubscriptionArray extends <Subscription>[] {
 //   sum(key: any) : number {
@@ -74,7 +74,8 @@ export class ProjectedRevenueController {
     @param.query.date('since') since?: Date,
     @param.query.date('until') until?: Date,
     @param.filter(Subscription) filter?: Filter<Subscription>,
-  ): Promise<Subscription[]> {
+  ): Promise<ProjectionReport> {
+    // ): Promise<Subscription[]> {
     let today = new Date();
     let firstDay = new Date(today.getUTCFullYear(), today.getUTCMonth(), 1);
     let monthRenewAmt: number = 0
@@ -98,7 +99,7 @@ export class ProjectedRevenueController {
     let monthLeaseSubs = await this.subscriptionRepository.find({
       where: {
         and: [
-          {next_assessment_at: {between: [since, until]}},
+          // {next_assessment_at: {between: [since, until]}},
           {state: "active"},
           {product_id: 5874830},
         ]
@@ -153,7 +154,27 @@ export class ProjectedRevenueController {
     console.log('peSubs.length: ' + peSubs.length)
     console.log('peSubs.total: ' + peRenewAmt)
 
-    return monthLeaseSubs
+    let totalRenewAmt = monthRenewAmt + yearRenewAmt + peRenewAmt;
+    let renewalRevenueProjection: ProjectionReport = {
+      proEnhancementsProjection: {
+        name: "Pro Enhancements",
+        totalAmount: peRenewAmt
+      },
+      monthLeaseProjection: {
+        name: "Pro Suite Month Lease",
+        totalAmount: monthRenewAmt,
+      },
+      yearLeaseProjection: {
+        name: "Pro Suite Year Lease",
+        totalAmount: yearRenewAmt
+      },
+      totalProjection: {
+        name: "Total",
+        totalAmount: totalRenewAmt
+      }
+    }
+    // return monthLeaseSubs
+    return renewalRevenueProjection
   }
 
   @patch('/projected-revenue')

@@ -9,6 +9,26 @@ export interface DateFilter {
   until: Date
 }
 
+export interface ProjectionReport {
+  proEnhancementsProjection: {
+    name: string,
+    totalAmount: number
+  },
+  monthLeaseProjection: {
+    name: string,
+    totalAmount: number,
+  },
+  yearLeaseProjection: {
+    name: string,
+    totalAmount: number
+  }
+  totalProjection: {
+    name: string,
+    totalAmount: number
+  }
+}
+
+
 export class SubscriptionRepository extends DefaultCrudRepository<
   Subscription,
   typeof Subscription.prototype.id,
