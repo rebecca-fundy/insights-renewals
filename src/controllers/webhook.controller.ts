@@ -18,6 +18,8 @@ import {CustomerEventController} from './customer-event.controller';
 import {EventController} from './event.controller';
 
 let isLive = process.env.CHARGIFY_ENV == "live";
+const leaseProductIds = [5874830, 5601362, 5135042, 5081978]
+const peCost = 179;
 
 export class WebhookController {
   constructor(
@@ -43,6 +45,10 @@ export class WebhookController {
     public customerEventController: CustomerEventController,
   ) { }
 
+  isLeaseProduct(product_id: number): boolean {
+    return leaseProductIds.includes(product_id);
+  }
+
   async isRefreshTime(webhookDate: Date, previousEventId: number): Promise<boolean> {
     let isNextDay = false
     // let previousEventId = await this.eventController.findMaxId();
@@ -57,6 +63,197 @@ export class WebhookController {
     }
     console.log('isNextDay ', isNextDay)
     return isNextDay
+  }
+
+  async logRenewalSuccess(renewalEvent: any): Promise<Partial<Subscription>> {
+    let payload = renewalEvent.payload;
+    let subscription = payload["subscription"]
+    let subscription_id = parseInt(subscription["id"], 10);
+    let est_renew_amt = parseInt(subscription["product"]["price_in_cents"], 10) / 100
+
+    let renewalData: Partial<Subscription> = {
+      est_renew_amt: est_renew_amt,
+      next_assessment_at: subscription["next_assessment_at"],
+    }
+    await this.subscriptionRepository.updateById(subscription_id, renewalData);
+    return renewalData
+  }
+
+  async logPaymentUpdate(paymentUpdate: any): Promise<Partial<Subscription>> {
+    let payload = paymentUpdate.payload;
+    let subscription = payload["subscription"]
+    let subscription_id = parseInt(subscription["id"], 10);
+    let profile = payload["updated_payment_profile"];
+    let cc_exp_month = profile["expiration_month"] == undefined ? 0 : parseInt(profile["expiration_month"], 10)
+    let cc_exp_year = profile["expiration_year"] == undefined ? 0 : parseInt(profile["expiration_year"], 10)
+    let paymentData: Partial<Subscription> = {
+      cc_exp_month: cc_exp_month,
+      cc_exp_year: cc_exp_year,
+    }
+    await this.subscriptionRepository.updateById(subscription_id, paymentData)
+    return paymentData
+  }
+
+  async logSubscriptionStateChange(subscriptionStateUpdateEvent: any): Promise<Partial<EventDb>> {
+    //need to update subscription and eventDb.
+    let payload = subscriptionStateUpdateEvent.payload;
+    let id = subscriptionStateUpdateEvent.id;
+    let event = subscriptionStateUpdateEvent.event.trim()
+    let subdomain = payload["site"]["subdomain"].trim();
+    let subscription = payload["subscription"]
+    let subscription_id = parseInt(subscription["id"], 10);
+    let customer_id = parseInt(subscription["customer"]["id"], 10)
+    let eventId = parseInt(payload["event_id"], 10)
+    let eventCreationDate = new Date(subscription["updated_at"].trim())
+    let previous_subscription_state = subscription["previous_state"].trim()
+    let new_subscription_state = subscription["state"].trim()
+    let product_id = parseInt(subscription["product"]["id"], 10)
+    let est_renew_amt = parseInt(subscription["product"]["price_in_cents"], 10) / 100
+
+    if (!this.isLeaseProduct(product_id) && !(new_subscription_state == "canceled")) {
+      est_renew_amt = peCost
+    }
+
+    let subscriptionStateChangeData: Partial<Subscription> = {
+      state: new_subscription_state,
+      est_renew_amt: est_renew_amt
+    }
+
+    try {
+      subdomain == "fundy-suite"
+        ? await this.subscriptionRepository.updateById(subscription_id, subscriptionStateChangeData)
+        : await this.subscriptionSandboxRepository.updateById(subscription_id, subscriptionStateChangeData)
+    } catch (error) {
+      console.log(error)
+    }
+
+    let eventDbData: Partial<EventDb> = {
+      id: eventId,
+      subscription_id: subscription_id,
+      customer_id: customer_id,
+      key: event,
+      created_at: eventCreationDate,
+      previous_subscription_state: previous_subscription_state,
+      new_subscription_state: new_subscription_state
+    }
+
+    try {
+      await this.eventDbRepository.create(eventDbData)
+    } catch (error) {
+      console.log(error.message)
+    } finally {
+      return eventDbData;
+    }
+  }
+
+  async logAllocationChange(allocationChangeEvent: any): Promise<Partial<EventDb>> {
+    let payload = allocationChangeEvent.payload
+    let subscription = payload["subscription"]
+    let subscription_id = parseInt(subscription["id"], 10);
+    let customer_id = 0;
+    let event = allocationChangeEvent.event.trim()
+    let eventId = parseInt(payload["event_id"], 10)
+    let eventCreationDate = new Date(payload["timestamp"].trim())
+    let previous_allocation = parseInt(payload["previous_allocation"], 10)
+    let new_allocation = parseInt(payload["new_allocation"], 10)
+    let allocation_id = parseInt(payload["allocation"]["id"], 10)
+    let subdomain = payload["site"]["subdomain"].trim();
+    let product_id = parseInt(payload["product"]["id"], 10)
+
+    customer_id = isLive ?
+      (await this.subscriptionRepository.customerId(subscription_id)).id
+      : (await this.subscriptionSandboxRepository.customerSandboxId(subscription_id)).id
+
+    let eventDbData: Partial<EventDb> = {
+      id: eventId,
+      subscription_id: subscription_id,
+      customer_id: customer_id,
+      key: event,
+      created_at: eventCreationDate,
+      previous_allocation: previous_allocation,
+      new_allocation: new_allocation,
+      allocation_id: allocation_id,
+    }
+
+    let togglePeData: Partial<Subscription> = {
+      peOn: new_allocation == 0 ? false : true
+    }
+
+    if (!this.isLeaseProduct(product_id)) {
+      togglePeData.est_renew_amt = new_allocation == 0 ? 0 : peCost
+    }
+
+    try {
+      subdomain == "fundy-suite"
+        ? await this.subscriptionRepository.updateById(subscription_id, togglePeData)
+        : await this.subscriptionSandboxRepository.updateById(subscription_id, togglePeData)
+    } catch (error) {
+      console.log(error)
+    }
+
+    try {
+      await this.eventDbRepository.create(eventDbData)
+    } catch (error) {
+      console.log(error.message)
+    } finally {
+      return eventDbData;
+    }
+  }
+
+  async logSignupSuccess(signupEvent: any): Promise<Partial<Subscription>> {
+    let payload = signupEvent.payload;
+    let subscription = payload["subscription"]
+    let subscription_id = parseInt(subscription["id"], 10);
+    let customer_id = parseInt(subscription["customer"]["id"], 10);
+    let state = subscription["state"].trim()
+    let product_id = parseInt(subscription["product"]["id"], 10)
+    let eventCreationDate = new Date(subscription["updated_at"].trim())
+    let next_assessment_at = new Date(subscription["next_assessment_at"].trim())
+    let cc_exp_year = parseInt(subscription["credit_card"]["expiration_year"], 10)
+    let cc_exp_month = parseInt(subscription["credit_card"]["expiration_month"], 10)
+    let est_renew_amt = parseInt(subscription["product_price_in_cents"], 10) / 100
+
+    let newSubscriptionData: Partial<Subscription> = {
+      id: subscription_id,
+      created_at: eventCreationDate,
+      product_id: product_id,
+      customer_id: customer_id,
+      state: state,
+      peOn: true, //For lease products, this will be synonymous with an active subscription. Non-lease products will be set by the routine below.
+      next_assessment_at: next_assessment_at,
+      est_renew_amt: est_renew_amt,
+      cc_exp_month: cc_exp_month,
+      cc_exp_year: cc_exp_year
+    }
+
+    if (!leaseProductIds.includes(product_id)) {
+      console.log(`${product_id} is not a lease product`);
+      newSubscriptionData.peOn = await this.eventService.listComponents(subscription_id)
+        .then(components => {
+          let peComponent = components.filter(component => component.component.name.includes("Fundy Pro Enhancements")); console.log(`peComponent.length: ${peComponent.length}`);
+          return peComponent
+        })
+        .then(pEcomponent => pEcomponent[0].component.enabled)
+      est_renew_amt = newSubscriptionData.peOn ? peCost : 0
+    }
+
+    let customerData: Partial<Customer> = {
+      id: customer_id,
+      created_at: new Date(eventCreationDate)
+    }
+
+    try { //If the customer id already exists in the customer repo this will throw an error
+      console.log('signup_success')
+      await this.customerRepository.create(customerData)
+    } catch (error) {
+      console.log(error.message)
+    } try {
+      await this.subscriptionRepository.create(newSubscriptionData)
+    } catch (error) {
+      console.log(error)
+    } finally { //Regardless, the subscription repo must get the new subscription info
+      return newSubscriptionData
+    }
   }
 
   @post('/webhook')
@@ -75,171 +272,51 @@ export class WebhookController {
       },
     })
     chargifyEvent: any,
-  ): Promise<Partial<EventDb> | Subscription> {
+  ): Promise<Partial<EventDb> | Partial<Subscription>> {
     let payload = chargifyEvent.payload;
     let id = chargifyEvent.id;
+    let eventId = payload["event_id"]
+    let webhookDate = new Date();
     let event = chargifyEvent.event.trim()
     let subdomain = payload["site"]["subdomain"].trim();
     console.log('event ', event)
     console.log('subdomain ' + subdomain)
     console.log(event == "signup_success")
-    let subscription = payload["subscription"]
-    let subscription_id = parseInt(subscription["id"], 10);
-    let customer_id = 0;
-    // let webhookDate = new Date(payload["timestamp"].trim()) || new Date(subscription["updated_at"].trim())
-    let product_id = parseInt(subscription["product"]["id"], 10)
-    let eventId = parseInt(payload["event_id"], 10)
-    let eventCreationDate = event == "component_allocation_change" ? new Date(payload["timestamp"].trim()) : new Date(subscription["updated_at"].trim())
-    let previous_allocation = event == "component_allocation_change" ? parseInt(payload["previous_allocation"], 10) : undefined
-    let new_allocation = event == "component_allocation_change" ? parseInt(payload["new_allocation"], 10) : undefined
-    let allocation_id = event == "component_allocation_change" ? parseInt(payload["allocation"]["id"], 10) : undefined
-    let previous_subscription_state = event == "component_allocation_change" ? undefined : subscription["previous_state"].trim()
-    let new_subscription_state = event == "component_allocation_change" ? undefined : subscription["state"].trim()
+    let result: Partial<EventDb> | Partial<Subscription> = {}
+
+    if (event == "subscription_card_update") {
+      console.log(event);
+      result = await this.logPaymentUpdate(chargifyEvent)
+    }
+
+    if (event == "renewal_success" || event == "billing_date_change") {
+      result = await this.logRenewalSuccess(chargifyEvent)
+    }
+
+    if (event == "subscription_state_change") {
+      result = await this.logSubscriptionStateChange(chargifyEvent)
+    }
+
+    if (event == "component_allocation_change") {
+      result = await this.logAllocationChange(chargifyEvent);
+    }
+
+    if (event == "signup_success") {
+      result = await this.logSignupSuccess(chargifyEvent)
+    }
+
+
+
     let previousEventId = await this.eventController.findMaxId();
     console.log('maxId ', previousEventId)
 
 
-    if (event == "component_allocation_change") {
-      customer_id = isLive ?
-        (await this.subscriptionRepository.customerId(subscription_id)).id
-        : (await this.subscriptionSandboxRepository.customerSandboxId(subscription_id)).id
-    } else {
-      customer_id = parseInt(subscription["customer"]["id"], 10)
-    }
 
-    let eventDbData: Partial<EventDb> = {
-      id: eventId,
-      subscription_id: subscription_id,
-      customer_id: customer_id,
-      key: event,
-      created_at: eventCreationDate,
-      previous_allocation: previous_allocation,
-      new_allocation: new_allocation,
-      allocation_id: allocation_id,
-      previous_subscription_state: previous_subscription_state,
-      new_subscription_state: new_subscription_state
+    //Regardless, the subscription repo must get the new subscription info
+    if ((await this.isRefreshTime(webhookDate, previousEventId)) == true) {
+      this.customerEventController.refresh()
     }
-
-    console.log(eventDbData)
-
-    let newSubscriptionData: Partial<Subscription> = {
-      id: subscription_id,
-      created_at: eventCreationDate,
-      product_id: product_id,
-      customer_id: customer_id,
-      state: new_subscription_state,
-      peOn: true //For lease products, this will be synonymous with an active subscription. Non-lease products will be set by the routine below.
-    }
-
-    //[month lease live, month lease sandbox, year lease live, year lease sandbox]
-    const leaseProductIds = [5874830, 5601362, 5135042, 5081978]
-    console.log('productId ' + product_id)
-    //If it's not a lease product, query the Chargify API to find out if is on for the new subscription.
-    if (!leaseProductIds.includes(product_id) && event == "signup_success") {
-      console.log(`${product_id} is not a lease product`);
-      newSubscriptionData.peOn = await this.eventService.listComponents(subscription_id)
-        .then(components => {
-          let peComponent = components.filter(component => component.component.name.includes("Fundy Pro Enhancements")); console.log(`peComponent.length: ${peComponent.length}`);
-          return peComponent
-        })
-        .then(pEcomponent => pEcomponent[0].component.enabled)
-    }
-
-    let subscriptionStateChangeData: Partial<Subscription> = {
-      state: new_subscription_state
-    }
-
-    let togglePeData: Partial<Subscription> = {
-      peOn: new_allocation == 0 ? false : true
-    }
-
-    let customerData: Partial<Customer> = {
-      id: customer_id,
-      created_at: event == "signup_success" ? new Date(eventCreationDate) : undefined
-    }
-
-    //For subscription state changes, there will already be a subscription, so it will be updated.
-    if (event == "subscription_state_change") {
-      try {
-        subdomain == "fundy-suite"
-          ? await this.subscriptionRepository.updateById(subscription_id, subscriptionStateChangeData)
-          : await this.subscriptionSandboxRepository.updateById(subscription_id, subscriptionStateChangeData)
-      } catch (error) {
-        console.log(error)
-      }
-    }
-    //For allocation changes, the peOn field in the subscription repo needs to be updated.
-    if (event == "component_allocation_change") {
-      try {
-        subdomain == "fundy-suite"
-          ? await this.subscriptionRepository.updateById(subscription_id, togglePeData)
-          : await this.subscriptionSandboxRepository.updateById(subscription_id, togglePeData)
-      } catch (error) {
-        console.log(error)
-      }
-    }
-
-    if (subdomain == "fundy-suite") {
-      if (event == "signup_success") { //A signup success may be a new customer, or an upgrade for an existing customer.
-        try { //If the customer id already exists in the customer repo this will throw an error
-          console.log('signup_success')
-          await this.customerRepository.create(customerData)
-        } catch (error) {
-          console.log(error.message)
-        } try {
-          await this.subscriptionRepository.create(newSubscriptionData)
-        } catch (error) {
-          console.log(error)
-        } finally { //Regardless, the subscription repo must get the new subscription info
-          if ((await this.isRefreshTime(eventCreationDate, previousEventId)) == true) {
-            this.customerEventController.refresh()
-          }
-          return newSubscriptionData
-        }
-      } else { //Allocation and subscription state changes go in the event table.
-        try {
-          await this.eventDbRepository.create(eventDbData)
-        } catch (error) {
-          console.log(error.message)
-        } finally {
-          if ((await this.isRefreshTime(eventCreationDate, previousEventId)) == true) {
-            console.log('refreshing')
-            this.customerEventController.refresh()
-          }
-          return eventDbData;
-        }
-      }
-    } else {
-      if (event == "signup_success") {
-        try { //If the customer id already exists in the customer repo this will throw an error
-          console.log('signup_success')
-          await this.customerSandboxRepository.create(customerData)
-        } catch (error) {
-          console.log(error.message)
-        } try {
-          await this.subscriptionSandboxRepository.create(newSubscriptionData)
-        } catch (error) {
-          console.log(error)
-        } finally { //Regardless, the subscription repo must get the new subscription info
-          if ((await this.isRefreshTime(eventCreationDate, previousEventId)) == true) {
-            this.customerEventController.refresh()
-          }
-          return newSubscriptionData
-        }
-      } else {
-        try {
-          await this.eventDbSandboxRepository.create(eventDbData)
-        } catch (error) {
-          console.log(error.message)
-        } finally {
-          if ((await this.isRefreshTime(eventCreationDate, previousEventId)) == true) {
-            console.log('refreshing')
-            this.customerEventController.refresh()
-          }
-          return eventDbData;
-        }
-      }
-    }
+    return result
   }
 
   @get('/webhook/count')
