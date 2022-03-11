@@ -483,7 +483,14 @@ export class CustomerEventController {
         dropoffArray[i] = this.generateMonthlyDropoffTable(totalCust)
       }
     }
-    dropoffArray[productTypes.length] = (await this.refreshRepository.find({"order": ["idRefresh DESC"], "limit": 1}))[0].refreshDate
+    let lastRefreshDate = new Date();
+    try {
+      lastRefreshDate = (await this.refreshRepository.find({"order": ["idRefresh DESC"], "limit": 1}))[0].refreshDate
+    } catch (error) {
+      console.log(error)
+    } finally {
+      dropoffArray[productTypes.length] = lastRefreshDate
+    }
     return dropoffArray;
   }
 

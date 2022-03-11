@@ -67,6 +67,7 @@ export class WebhookController {
 
   async logRenewalSuccess(renewalEvent: any): Promise<Partial<Subscription>> {
     let payload = renewalEvent.payload;
+    let subdomain = payload["site"]["subdomain"].trim();
     let subscription = payload["subscription"]
     let subscription_id = parseInt(subscription["id"], 10);
     let est_renew_amt = parseInt(subscription["product"]["price_in_cents"], 10) / 100
@@ -75,12 +76,20 @@ export class WebhookController {
       est_renew_amt: est_renew_amt,
       next_assessment_at: subscription["next_assessment_at"],
     }
-    await this.subscriptionRepository.updateById(subscription_id, renewalData);
-    return renewalData
+    try {
+      subdomain == "fundy-suite"
+        ? await this.subscriptionRepository.updateById(subscription_id, renewalData)
+        : await this.subscriptionSandboxRepository.updateById(subscription_id, renewalData)
+    } catch (error) {
+      console.log(error)
+    } finally {
+      return renewalData
+    }
   }
 
   async logPaymentUpdate(paymentUpdate: any): Promise<Partial<Subscription>> {
     let payload = paymentUpdate.payload;
+    let subdomain = payload["site"]["subdomain"].trim();
     let subscription = payload["subscription"]
     let subscription_id = parseInt(subscription["id"], 10);
     let profile = payload["updated_payment_profile"];
@@ -90,8 +99,15 @@ export class WebhookController {
       cc_exp_month: cc_exp_month,
       cc_exp_year: cc_exp_year,
     }
-    await this.subscriptionRepository.updateById(subscription_id, paymentData)
-    return paymentData
+    try {
+      subdomain == "fundy-suite"
+        ? await this.subscriptionRepository.updateById(subscription_id, paymentData)
+        : await this.subscriptionSandboxRepository.updateById(subscription_id, paymentData)
+    } catch (error) {
+      console.log(error)
+    } finally {
+      return paymentData
+    }
   }
 
   async logSubscriptionStateChange(subscriptionStateUpdateEvent: any): Promise<Partial<EventDb>> {
@@ -138,7 +154,9 @@ export class WebhookController {
     }
 
     try {
-      await this.eventDbRepository.create(eventDbData)
+      subdomain == "fundy-suite"
+        ? await this.eventDbRepository.create(eventDbData)
+        : await this.eventDbSandboxRepository.create(eventDbData)
     } catch (error) {
       console.log(error.message)
     } finally {
@@ -147,6 +165,7 @@ export class WebhookController {
   }
 
   async logAllocationChange(allocationChangeEvent: any): Promise<Partial<EventDb>> {
+    console.log("allocation change")
     let payload = allocationChangeEvent.payload
     let subscription = payload["subscription"]
     let subscription_id = parseInt(subscription["id"], 10);
@@ -192,7 +211,9 @@ export class WebhookController {
     }
 
     try {
-      await this.eventDbRepository.create(eventDbData)
+      subdomain == "fundy-suite"
+        ? await this.eventDbRepository.create(eventDbData)
+        : await this.eventDbSandboxRepository.create(eventDbData)
     } catch (error) {
       console.log(error.message)
     } finally {
@@ -204,13 +225,19 @@ export class WebhookController {
     let payload = signupEvent.payload;
     let subscription = payload["subscription"]
     let subscription_id = parseInt(subscription["id"], 10);
+    let subdomain = payload["site"]["subdomain"].trim();
     let customer_id = parseInt(subscription["customer"]["id"], 10);
     let state = subscription["state"].trim()
     let product_id = parseInt(subscription["product"]["id"], 10)
     let eventCreationDate = new Date(subscription["updated_at"].trim())
     let next_assessment_at = new Date(subscription["next_assessment_at"].trim())
-    let cc_exp_year = parseInt(subscription["credit_card"]["expiration_year"], 10)
-    let cc_exp_month = parseInt(subscription["credit_card"]["expiration_month"], 10)
+    let payment_type = subscription["payment_type"].trim()
+    let cc_exp_year = payment_type == "paypal_account"
+      ? 0
+      : parseInt(subscription["credit_card"]["expiration_year"], 10)
+    let cc_exp_month = payment_type == "paypal_account"
+      ? 0
+      : parseInt(subscription["credit_card"]["expiration_month"], 10)
     let est_renew_amt = parseInt(subscription["product_price_in_cents"], 10) / 100
 
     let newSubscriptionData: Partial<Subscription> = {
@@ -244,11 +271,15 @@ export class WebhookController {
 
     try { //If the customer id already exists in the customer repo this will throw an error
       console.log('signup_success')
-      await this.customerRepository.create(customerData)
+      subdomain == "fundy-suite"
+        ? await this.customerRepository.create(customerData)
+        : await this.customerSandboxRepository.create(customerData)
     } catch (error) {
       console.log(error.message)
     } try {
-      await this.subscriptionRepository.create(newSubscriptionData)
+      subdomain == "fundy-suite"
+        ? await this.subscriptionRepository.create(newSubscriptionData)
+        : await this.subscriptionSandboxRepository.create(newSubscriptionData)
     } catch (error) {
       console.log(error)
     } finally { //Regardless, the subscription repo must get the new subscription info
@@ -273,15 +304,15 @@ export class WebhookController {
     })
     chargifyEvent: any,
   ): Promise<Partial<EventDb> | Partial<Subscription>> {
-    let payload = chargifyEvent.payload;
-    let id = chargifyEvent.id;
-    let eventId = payload["event_id"]
+    // let payload = chargifyEvent.payload;
+    // let id = chargifyEvent.id;
+    // let eventId = payload["event_id"]
     let webhookDate = new Date();
     let event = chargifyEvent.event.trim()
-    let subdomain = payload["site"]["subdomain"].trim();
-    console.log('event ', event)
-    console.log('subdomain ' + subdomain)
-    console.log(event == "signup_success")
+    // let subdomain = payload["site"]["subdomain"].trim();
+    // console.log('event ', event)
+    // console.log('subdomain ' + subdomain)
+    // console.log(event == "signup_success")
     let result: Partial<EventDb> | Partial<Subscription> = {}
 
     if (event == "subscription_card_update") {
@@ -305,14 +336,9 @@ export class WebhookController {
       result = await this.logSignupSuccess(chargifyEvent)
     }
 
-
-
     let previousEventId = await this.eventController.findMaxId();
     console.log('maxId ', previousEventId)
 
-
-
-    //Regardless, the subscription repo must get the new subscription info
     if ((await this.isRefreshTime(webhookDate, previousEventId)) == true) {
       this.customerEventController.refresh()
     }
