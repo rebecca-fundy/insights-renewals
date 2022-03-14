@@ -12,7 +12,7 @@ import {
   getModelSchemaRef, param, patch, post, put, requestBody, response
 } from '@loopback/rest';
 import {ChargifyEvent, Customer, EventDb, Subscription} from '../models';
-import {ChargifyEventRepository, CustomerRepository, CustomerSandboxRepository, EventDbRepository, EventDbSandboxRepository, SubscriptionRepository, SubscriptionSandboxRepository} from '../repositories';
+import {ChargifyEventRepository, CustomerRepository, CustomerSandboxRepository, EventDbRepository, EventDbSandboxRepository, RefreshRepository, SubscriptionRepository, SubscriptionSandboxRepository} from '../repositories';
 import {Event} from '../services';
 import {CustomerEventController} from './customer-event.controller';
 import {EventController} from './event.controller';
@@ -37,6 +37,8 @@ export class WebhookController {
     public customerRepository: CustomerRepository,
     @repository(CustomerSandboxRepository)
     public customerSandboxRepository: CustomerSandboxRepository,
+    @repository(RefreshRepository)
+    public refreshRepository: RefreshRepository,
     @inject('services.Event')
     protected eventService: Event,
     @inject('controllers.EventController')
@@ -49,15 +51,15 @@ export class WebhookController {
     return leaseProductIds.includes(product_id);
   }
 
-  async isRefreshTime(webhookDate: Date, previousEventId: number): Promise<boolean> {
+  async isRefreshTime(webhookDate: Date): Promise<boolean> {
     let isNextDay = false
     // let previousEventId = await this.eventController.findMaxId();
-    let previousEvent = await this.eventController.findById(previousEventId);
-    let previousEventDate = previousEvent.created_at
-    console.log('previousEventId: ', previousEventId, 'previousEventDate ', previousEventDate)
-    var nextDayDate = new Date(previousEventDate.getFullYear(), previousEventDate.getMonth(), previousEventDate.getDate() + 1);
+    let previousRefreshDate = (await this.refreshRepository.find({"order": ["idRefresh DESC"], "limit": 1}))[0].refreshDate
+    // let previousEventDate = previousEvent.created_at
+    console.log('previousRefreshDate: ', previousRefreshDate)
+    var nextDayDate = new Date(previousRefreshDate.getFullYear(), previousRefreshDate.getMonth(), previousRefreshDate.getDate() + 1);
     console.log('nextDayDate ', nextDayDate);
-
+    console.log('webhookDate: ', webhookDate)
     if (nextDayDate.getFullYear() == webhookDate.getFullYear() && nextDayDate.getMonth() == webhookDate.getMonth() && nextDayDate.getDate() == webhookDate.getDate()) {
       isNextDay = true; // date2 is one day after date1.
     }
@@ -336,10 +338,10 @@ export class WebhookController {
       result = await this.logSignupSuccess(chargifyEvent)
     }
 
-    let previousEventId = await this.eventController.findMaxId();
-    console.log('maxId ', previousEventId)
+    // let previousEventId = await this.eventController.findMaxId();
+    // console.log('maxId ', previousEventId)
 
-    if ((await this.isRefreshTime(webhookDate, previousEventId)) == true) {
+    if ((await this.isRefreshTime(webhookDate)) == true) {
       this.customerEventController.refresh()
     }
     return result
