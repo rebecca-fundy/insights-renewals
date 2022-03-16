@@ -81,6 +81,15 @@ export class ProjectedRevenueController {
     let monthRenewAmt: number = 0
     let yearRenewAmt = 0
     let peRenewAmt = 0
+    let peActiveAmt = 0
+    let peTrialAmt = 0
+    let monthActiveAmt = 0
+    let monthTrialAmt = 0
+    let yearActiveAmt = 0
+    let yearTrialAmt = 0
+    let totalTrialAmt = 0
+    let totalActiveAmt = 0
+
     let subCount = (await (this.subscriptionRepository.count())).count
 
     if (!since) {
@@ -114,6 +123,7 @@ export class ProjectedRevenueController {
       // }
       monthRenewAmt += sub.est_renew_amt
     }
+    monthActiveAmt = monthRenewAmt
 
 
     let yearLeaseSubs = await this.subscriptionRepository.find({
@@ -131,6 +141,8 @@ export class ProjectedRevenueController {
       yearRenewAmt += sub.est_renew_amt
     }
 
+    yearActiveAmt = yearRenewAmt
+
     let peSubs = await this.subscriptionRepository.find({
       where: {
         and: [
@@ -145,6 +157,12 @@ export class ProjectedRevenueController {
 
     for (let sub of peSubs) {
       peRenewAmt += sub.est_renew_amt
+      if (sub.state == "active") {
+        peActiveAmt += sub.est_renew_amt
+      }
+      if (sub.state == "trialing") {
+        peTrialAmt += sub.est_renew_amt
+      }
     }
     console.log('total sub count: ' + subCount)
     console.log('monthLeaseSubs.length: ' + monthLeaseSubs.length)
@@ -155,21 +173,32 @@ export class ProjectedRevenueController {
     console.log('peSubs.total: ' + peRenewAmt)
 
     let totalRenewAmt = monthRenewAmt + yearRenewAmt + peRenewAmt;
+    totalTrialAmt = peTrialAmt + monthTrialAmt + yearTrialAmt;
+    totalActiveAmt = peActiveAmt + monthActiveAmt + yearActiveAmt
+
     let renewalRevenueProjection: ProjectionReport = {
       proEnhancementsProjection: {
         name: "Pro Enhancements",
+        trialAmount: peTrialAmt,
+        activeAmount: peActiveAmt,
         totalAmount: peRenewAmt
       },
       monthLeaseProjection: {
         name: "Pro Suite Month Lease",
+        // trialAmount: monthTrialAmt,
+        activeAmount: monthActiveAmt,
         totalAmount: monthRenewAmt,
       },
       yearLeaseProjection: {
         name: "Pro Suite Year Lease",
+        // trialAmount: yearTrialAmt,
+        activeAmount: yearActiveAmt,
         totalAmount: yearRenewAmt
       },
       totalProjection: {
         name: "Total",
+        trialAmount: totalTrialAmt,
+        activeAmount: totalActiveAmt,
         totalAmount: totalRenewAmt
       }
     }

@@ -12,18 +12,26 @@ export interface DateFilter {
 export interface ProjectionReport {
   proEnhancementsProjection: {
     name: string,
+    trialAmount: number,
+    activeAmount: number,
     totalAmount: number
   },
   monthLeaseProjection: {
     name: string,
+    // trialAmount: number,
+    activeAmount: number,
     totalAmount: number,
   },
   yearLeaseProjection: {
     name: string,
+    // trialAmount: number,
+    activeAmount: number,
     totalAmount: number
   }
   totalProjection: {
     name: string,
+    trialAmount: number,
+    activeAmount: number,
     totalAmount: number
   }
 }
