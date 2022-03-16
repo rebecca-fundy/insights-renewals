@@ -114,7 +114,7 @@ export class ProjectedRevenueController {
         ]
       }
     })
-      .then(result => result.filter(sub => sub.cc_exp_year == 0 || sub.cc_exp_year > sinceYear || (sub.cc_exp_year == sinceYear && sub.cc_exp_month > sinceMonth)));
+      .then(result => result.filter(sub => sub.cc_exp_year == 0 || sub.cc_exp_year > sinceYear || (sub.cc_exp_year == sinceYear && sub.cc_exp_month > sinceMonth - 1)));
 
     for (let sub of monthLeaseSubs) {
       // if (sub.cc_exp_year == sinceYear) {
@@ -135,7 +135,7 @@ export class ProjectedRevenueController {
         ]
       }
     })
-      .then(result => result.filter(sub => sub.cc_exp_year == 0 || sub.cc_exp_year > sinceYear || (sub.cc_exp_year == sinceYear && sub.cc_exp_month > sinceMonth)));
+      .then(result => result.filter(sub => sub.cc_exp_year == 0 || sub.cc_exp_year > sinceYear || (sub.cc_exp_year == sinceYear && sub.cc_exp_month > sinceMonth - 1)));
 
     for (let sub of yearLeaseSubs) {
       yearRenewAmt += sub.est_renew_amt
@@ -153,7 +153,7 @@ export class ProjectedRevenueController {
         ]
       }
     })
-      .then(result => result.filter(sub => sub.cc_exp_year == 0 || sub.cc_exp_year > sinceYear || (sub.cc_exp_year == sinceYear && sub.cc_exp_month > sinceMonth)));
+      .then(result => result.filter(sub => sub.cc_exp_year == 0 || sub.cc_exp_year > sinceYear || (sub.cc_exp_year == sinceYear && sub.cc_exp_month > sinceMonth - 1)));
 
     for (let sub of peSubs) {
       peRenewAmt += sub.est_renew_amt
