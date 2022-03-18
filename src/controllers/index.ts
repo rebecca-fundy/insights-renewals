@@ -10,3 +10,4 @@ export * from './webhook.controller';
 export * from './subscription-customer.controller';
 export * from './subscription-sandbox-customer-sandbox.controller';
 export * from './projected-revenue.controller';
+export * from './revenue.controller';
