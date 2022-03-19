@@ -102,18 +102,18 @@ export class RevenueController {
     }
 
 
-    let sameDay = (since.getFullYear == until.getFullYear) && (since.getMonth == until.getMonth) && (since.getDate == until.getDate)
+    let sameDay = (since.getFullYear() == until.getFullYear()) && (since.getMonth() == until.getMonth()) && (since.getDate() == until.getDate())
 
     console.log(sameDay)
 
-    if (sameDay) {
-      since.setUTCHours(0)
-      since.setUTCMinutes(0)
-      since.setUTCSeconds(0)
-      until.setUTCHours(23)
-      until.setUTCMinutes(59)
-      until.setUTCSeconds(59)
-    }
+    // if (sameDay) {
+    since.setUTCHours(0)
+    since.setUTCMinutes(0)
+    since.setUTCSeconds(0)
+    until.setUTCHours(23)
+    until.setUTCMinutes(59)
+    until.setUTCSeconds(59)
+    // }
 
     console.log('since: ' + since);
     console.log('until: ' + until);
@@ -121,80 +121,80 @@ export class RevenueController {
     let revenueReport: RevenueReport = {
       title: "Revenue Report",
       v10ProSuite: {
-        title: "v10 Pro Suite",
+        name: "v10 Pro Suite",
         chargify: 0,
         total: 0
       },
       v10AlbumSuite: {
-        title: "v10 Album Suite",
+        name: "v10 Album Suite",
         chargify: 0,
         total: 0
       },
       v10ProSuiteCrossgrade: {
-        title: "v10 Pro Suite Crossgrade",
+        name: "v10 Pro Suite Crossgrade",
         chargify: 0,
         total: 0
       },
       proEnhancements: {
-        title: "Pro Enhancements",
+        name: "Pro Enhancements",
         chargify: 0,
         total: 0
       },
       proEnhancementsReOptIn: {
-        title: "Pro E. Re-Opt-In",
+        name: "Pro E. Re-Opt-In",
         chargify: 0,
         total: 0
       },
       upgrades: {
-        title: "Upgrades",
+        name: "Upgrades",
         chargify: 0,
         total: 0
       },
       v10ProSuiteYearLeaseSignup: {
-        title: "Year Lease Signup",
+        name: "Year Lease Signup",
         chargify: 0,
         total: 0
       },
       v10ProSuiteYearLeaseRenew: {
-        title: "Year Lease Renew",
+        name: "Year Lease Renew",
         chargify: 0,
         total: 0
       },
       v10ProSuiteMonthLeaseSignup: {
-        title: "Month Lease Signup",
+        name: "Month Lease Signup",
         chargify: 0,
         total: 0
       },
       v10ProSuiteMonthLeaseRenew: {
-        title: "Month Lease Renew",
+        name: "Month Lease Renew",
         chargify: 0,
         total: 0
       },
       oldProofer: {
-        title: "Old Proofer",
+        name: "Old Proofer",
         authorize: 0,
         total: 0
       },
       directGross: {
-        title: "Direct Gross",
+        name: "Direct Gross",
         chargify: 0,
         authorize: 0,
         total: 0
       },
       directNet: {
-        title: "Direct Net",
+        name: "Direct Net",
         chargify: 0,
         authorize: 0,
         total: 0
       },
       undetermined: {
-        title: "Undetermined",
+        name: "Undetermined",
         chargify: 0,
         authorize: 0,
         total: 0
       },
       total: {
-        title: "Total",
+        name: "Total",
         chargify: 0,
         authorize: 0,
         total: 0
@@ -215,13 +215,13 @@ export class RevenueController {
       let product_id = txn.product_id
       let isPayment = txn.type == "payment"
       let amount = isPayment
-        ? txn.amount_in_cents
-        : -(txn.amount_in_cents)
+        ? txn.amount_in_cents / 100
+        : -(txn.amount_in_cents) / 100
       let productType = this.productService.getProductType(product_id, memo, counter, kind, txn.amount_in_cents)
       // let productType = "reOptIn";
 
+      revenueReport.total.total += amount
       if (txn.source == 'chargify') {
-        revenueReport.total.total += amount
         revenueReport.total.chargify += amount
         switch (productType) {
           case "reOptIn": {
@@ -280,12 +280,13 @@ export class RevenueController {
             } else {
               revenueReport.undetermined.chargify = amount
             }
-            revenueReport.undetermined.title += amount
+            revenueReport.undetermined.total += amount
           }
         }
-      } else if (txn.source == "authorized") {
+      } else if (txn.source == "authorize") {
         revenueReport.oldProofer.authorize += amount
         revenueReport.oldProofer.total += amount
+        revenueReport.total.authorize += amount
       } else (
         revenueReport.undetermined.total += amount
       )

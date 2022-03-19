@@ -4,27 +4,27 @@ import {DbDataSource} from '../datasources';
 import {Transaction, TransactionRelations} from '../models';
 
 export interface ProductField {
-  title: string,
+  name: string,
   chargify?: number,
   authorize?: number,
   total: number
 }
 
 export interface TotalField {
-  title: string,
+  name: string,
   chargify: number,
   authorize: number,
   total: number
 }
 
 export interface ChargifyField {
-  title: string,
+  name: string,
   chargify: number,
   total: number
 }
 
 export interface AuthorizeField {
-  title: string,
+  name: string,
   authorize: number,
   total: number
 }
