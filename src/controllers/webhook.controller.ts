@@ -11,11 +11,12 @@ import {
   del, get,
   getModelSchemaRef, param, patch, post, put, requestBody, response
 } from '@loopback/rest';
-import {ChargifyEvent, Customer, EventDb, Subscription} from '../models';
-import {ChargifyEventRepository, CustomerRepository, CustomerSandboxRepository, EventDbRepository, EventDbSandboxRepository, RefreshRepository, SubscriptionRepository, SubscriptionSandboxRepository} from '../repositories';
-import {Event} from '../services';
+import {ChargifyEvent, Customer, EventDb, Subscription, Transaction} from '../models';
+import {ChargifyEventRepository, CustomerRepository, CustomerSandboxRepository, EventDbRepository, EventDbSandboxRepository, RefreshRepository, SubscriptionRepository, SubscriptionSandboxRepository, TransactionRepository, TransactionSandboxRepository} from '../repositories';
+import {Event, ProductTypeService} from '../services';
 import {CustomerEventController} from './customer-event.controller';
 import {EventController} from './event.controller';
+
 
 let isLive = process.env.CHARGIFY_ENV == "live";
 const leaseProductIds = [5874830, 5601362, 5135042, 5081978]
@@ -39,8 +40,14 @@ export class WebhookController {
     public customerSandboxRepository: CustomerSandboxRepository,
     @repository(RefreshRepository)
     public refreshRepository: RefreshRepository,
+    @repository(TransactionRepository)
+    public transactionRepository: TransactionRepository,
+    @repository(TransactionSandboxRepository)
+    public transactionSandboxRepository: TransactionSandboxRepository,
     @inject('services.Event')
     protected eventService: Event,
+    @inject('services.ProductTypeService')
+    public productTypeService: ProductTypeService,
     @inject('controllers.EventController')
     public eventController: EventController,
     @inject('controllers.CustomerEventController')
@@ -86,6 +93,84 @@ export class WebhookController {
       console.log(error)
     } finally {
       return renewalData
+    }
+  }
+
+  async logPaymentSuccess(paymentEvent: any): Promise<Partial<Transaction>> {
+    let payload = paymentEvent.payload;
+    let subdomain = payload["site"]["subdomain"].trim();
+    let subscription = payload["subscription"]
+    let product_id = parseInt(subscription["product"]["id"], 10)
+    let txn = payload["transaction"]
+    let txn_id = parseInt(txn["id"], 10);
+    let kind = txn["kind"] ? txn.kind : undefined
+    let source = subdomain == "fundy"
+      ? "authorize"
+      : "chargify"
+    let paymentData: Partial<Transaction> = {
+      id: txn_id,
+      type: "payment",
+      created_at: txn["created_at"],
+      memo: txn["memo"],
+      amount_in_cents: txn["amount_in_cents"],
+      product_id,
+      kind,
+      source
+    }
+    try {
+      (subdomain == "fundy-suite" || subdomain == "fundy")
+        ? await this.transactionRepository.create(paymentData)
+        : await this.transactionSandboxRepository.create(paymentData)
+    } catch (error) {
+      console.log(error)
+    } finally {
+      return paymentData
+    }
+  }
+
+  //TODO: implement subdomains for sandbox to enable testing.
+  async logRefund(refundEvent: any): Promise<Partial<Transaction>> {
+    let payload = refundEvent.payload;
+
+    //Proofer Chargify site has subdomain "fundy, so any hooks from there apply to old proofer.
+    let subdomain = payload["site"]["subdomain"].trim();
+    let subscription_id = payload["subscription_id"]
+    let amount_in_cents = payload["payment_amount_in_cents"]
+
+    //refund_success webhook does not have a product payload so we must figure out the product by querying the subscription db
+    let product_id = subdomain == "fundy"
+      ? 27089 //One of the Old Proofer product_ids, because we don't store subscription information on Old Proofer
+      : (await this.subscriptionRepository.findById(subscription_id)).product_id
+    let kind
+
+    //refund_success webhook does not have a transaction payload, so this id is the webhook id, not the transaction id.
+    let id = parseInt(refundEvent.id, 10);
+    if (amount_in_cents == 9900) {
+      kind = "component_proration"
+    }
+
+    let source = subdomain == "fundy"
+      ? "authorize"
+      : "chargify"
+
+    let refundData: Partial<Transaction> = {
+      id,
+      type: "refund",
+      created_at: payload["timestamp"],
+      memo: payload["memo"],
+      amount_in_cents,
+      product_id,
+      kind,
+      source
+    }
+    try {
+      (subdomain == "fundy-suite" || subdomain == "fundy")
+        ? await this.transactionRepository.create(refundData)
+        : await this.transactionSandboxRepository.create(refundData)
+    } catch (error) {
+      console.log(error)
+    } finally {
+      return refundData
     }
   }
 
@@ -315,7 +400,7 @@ export class WebhookController {
     // console.log('event ', event)
     // console.log('subdomain ' + subdomain)
     // console.log(event == "signup_success")
-    let result: Partial<EventDb> | Partial<Subscription> = {}
+    let result: Partial<EventDb> | Partial<Subscription> | Partial<Transaction> = {}
 
     if (event == "subscription_card_update") {
       console.log(event);
@@ -336,6 +421,14 @@ export class WebhookController {
 
     if (event == "signup_success") {
       result = await this.logSignupSuccess(chargifyEvent)
+    }
+
+    if (event == "payment_success") {
+      result = await this.logPaymentSuccess(chargifyEvent)
+    }
+
+    if (event == "refund_success") {
+      result = await this.logRefund(chargifyEvent)
     }
 
     // let previousEventId = await this.eventController.findMaxId();

@@ -1,11 +1,12 @@
 import { /* inject, */ BindingScope, injectable} from '@loopback/core';
-
-const yearLeaseIds: number[] = [5135042]
-const monthLeaseIds: number[] = [5874830]
-const v10ProIds: number[] = [5135022]
-const v10CrossIds: number[] = [4452098, 5153304]
-const v10AlbumIds: number[] = [5135020]
-const upgradeIds: number[] = [3805476, 3805492, 4316817, 4433849, 4445987, 4445988, 4445989, 4445990, 4445991, 4445994, 4452106, 4452107, 4480069, 4480614, 4480616, 4480619, 4481015, 4683863, 5135017, 5135018, 5135019]
+//Includes live and sandbox product IDs
+const yearLeaseIds: number[] = [5135042, 5081978]
+const monthLeaseIds: number[] = [5874830, 5601362]
+const v10ProIds: number[] = [5135022, 5081977]
+const v10CrossIds: number[] = [4452098, 5153304, 5152248]
+const v10AlbumIds: number[] = [5135020, 5081976]
+const upgradeIds: number[] = [3805476, 3805492, 4316817, 4433849, 4445987, 4445988, 4445989, 4445990, 4445991, 4445994, 4452106, 4452107, 4480069, 4480614, 4480616, 4480619, 4481015, 4683863, 5135017, 5135018, 5135019, 4466594, 5085553, 5084462, 5084205, 4631030, 4624053, 4624049, 4624044, 4624042, 4624031, 4466604, 4466603, 4466602, 4466601, 4466600, 4466599, 4466598, 4466597, 4466596, 4466595, 4466593, 4466606]
+const oldProoferIds: number[] = [27089, 27093, 27094, 3296637, 3761050]
 
 @injectable({scope: BindingScope.TRANSIENT})
 export class ProductTypeService {
@@ -40,6 +41,10 @@ export class ProductTypeService {
     return v10AlbumIds.includes(product_id);
   }
 
+  isOldProofer(product_id: number): boolean {
+    return oldProoferIds.includes(product_id);
+  }
+
   getProductType(product_id: number, memo: string, counter: number, kind?: string, amount?: number): string {
     let productType = "undetermined"
     let isRenewal = memo.toLowerCase().includes('renew')
@@ -68,6 +73,8 @@ export class ProductTypeService {
       productType = "v10Cross"
     } else if (this.isv10Pro(product_id)) {
       productType = "v10Pro"
+    } else if (this.isOldProofer(product_id)) {
+      productType = "oldProofer"
     }
     if (counter == 1) {console.log(productType)}
 

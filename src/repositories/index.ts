@@ -10,3 +10,4 @@ export * from './event-db-sandbox.repository';
 export * from './chargify-event.repository';
 export * from './refresh.repository';
 export * from './transaction.repository';
+export * from './transaction-sandbox.repository';
