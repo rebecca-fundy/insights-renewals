@@ -45,7 +45,7 @@ export class ProductTypeService {
     return oldProoferIds.includes(product_id);
   }
 
-  getProductType(product_id: number, memo: string, counter: number, kind?: string, amount?: number): string {
+  getProductType(product_id: number, memo: string, kind?: string, amount?: number): string {
     let productType = "undetermined"
     let isRenewal = memo.toLowerCase().includes('renew')
     let isReOptIn = kind?.includes("component_proration")
@@ -57,7 +57,6 @@ export class ProductTypeService {
       productType = "yearLeaseRenewal"
     } else if (isRenewal || amount == 17900) {
       productType = "peRenewal"
-      if (counter == 1) {console.log(productType)}
     } else if (this.isMonthLease(product_id)) {
       productType = "monthLease"
     } else if (this.isYearLease(product_id)) {

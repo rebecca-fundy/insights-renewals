@@ -45,7 +45,8 @@ export interface RevenueReport {
   directGross: ProductField,
   directNet: ProductField,
   undetermined: ProductField
-  total: TotalField
+  totalGross: TotalField
+  totalNet: TotalField
 }
 
 export class TransactionRepository extends DefaultCrudRepository<

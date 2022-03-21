@@ -96,7 +96,7 @@ export class RevenueController {
     let sinceDate = `${since.getUTCFullYear()}-${since.getUTCMonth() + 1}-${since.getUTCDate()}`
     let untilDate = `${until.getUTCFullYear()}-${until.getUTCMonth() + 1}-${until.getUTCDate()}`
 
-    let query = `select ot.TransactionType type, sum(Total) total from FundyCentral.OrderTransaction ot
+    let query = `select ot.TransactionType type, sum(Total)*100 total from FundyCentral.OrderTransaction ot
     join FundyCentral.Order o on ot.OrderId = o.id
     where ot.TransactionDate Between ? and ?
     and ot.Status = "APPROVED"
@@ -104,13 +104,50 @@ export class RevenueController {
     Group By ot.TransactionType;`
 
     let params = [sinceDate, untilDate]
-    let result = await this.directTransactionRepository.execute(query, params)
+    let results = await this.directTransactionRepository.execute(query, params)
+    // let results: DirectResult[] = await this.directTransactionRepository.execute(query, params)
     //Look in RevenueReport.java for processing this but it looks like commissions are 10%, and refunds are "credits"
-    const directCommission = 0.1
-    console.log(result[0])
-    console.log(result[0]["type"])
-    console.log(result[0]["total"])
-    return result;
+    const directCommission = 0.12
+    // console.log(results[0])
+    // console.log(results[0]["type"])
+    // console.log(results[0]["total"])
+    // let created_at = new Date(since)
+    let amount_in_cents = 0;
+    let directGrossResult: Partial<Transaction> =
+    {
+      id: 0,
+      type: 'payment',
+      created_at: since,
+      memo: 'direct gross revenue',
+      amount_in_cents: 0,
+      product_id: 0,
+      source: 'direct'
+    }
+    let directNetResult: Partial<Transaction> =
+    {
+      id: 1,
+      type: 'payment',
+      created_at: since,
+      memo: 'direct net revenue',
+      amount_in_cents: 0,
+      product_id: 0,
+      source: 'direct'
+    }
+    if (results) {
+      for (let i = 0; i < results.length; i++) {
+        if (results[i]["type"] == 'CREDIT') {
+          amount_in_cents -= results[i]["total"]
+        } else if (results[i]["type"] == 'AUTHORIZE' || results[i]["type"] == 'BRAINTREE') {
+          amount_in_cents += results[i]["total"]
+        }
+      }
+    }
+    directGrossResult.amount_in_cents = amount_in_cents;
+    directNetResult.amount_in_cents = amount_in_cents * directCommission
+
+    let resultArray = [directGrossResult, directNetResult]
+
+    return resultArray;
   }
 
   @get('/revenue-report')
@@ -234,8 +271,14 @@ export class RevenueController {
         authorize: 0,
         total: 0
       },
-      total: {
-        name: "Total",
+      totalGross: {
+        name: "Total Gross",
+        chargify: 0,
+        authorize: 0,
+        total: 0
+      },
+      totalNet: {
+        name: "Total Net",
         chargify: 0,
         authorize: 0,
         total: 0
@@ -248,9 +291,9 @@ export class RevenueController {
         }
       }
     );
-    let counter = 0;
+    let directResults = await this.getDirect(since, until);
+
     for (let txn of txnsInRange) {
-      counter++;
       let memo = txn.memo
       let kind = txn.kind
       let product_id = txn.product_id
@@ -258,12 +301,14 @@ export class RevenueController {
       let amount = isPayment
         ? txn.amount_in_cents / 100
         : -(txn.amount_in_cents) / 100
-      let productType = this.productService.getProductType(product_id, memo, counter, kind, txn.amount_in_cents)
+      let productType = this.productService.getProductType(product_id, memo, kind, txn.amount_in_cents)
       // let productType = "reOptIn";
 
-      revenueReport.total.total += amount
+      revenueReport.totalGross.total += amount
+      revenueReport.totalNet.total += amount
       if (txn.source == 'chargify') {
-        revenueReport.total.chargify += amount
+        revenueReport.totalGross.chargify += amount
+        revenueReport.totalNet.chargify += amount
         switch (productType) {
           case "reOptIn": {
             revenueReport.proEnhancementsReOptIn.chargify += amount
@@ -327,11 +372,16 @@ export class RevenueController {
       } else if (txn.source == "authorize") {
         revenueReport.oldProofer.authorize += amount
         revenueReport.oldProofer.total += amount
-        revenueReport.total.authorize += amount
+        revenueReport.totalGross.authorize += amount
+        revenueReport.totalNet.authorize += amount
       } else (
         revenueReport.undetermined.total += amount
       )
     }
+    revenueReport.directGross.total = directResults[0].amount_in_cents / 100
+    revenueReport.totalGross.total += directResults[0].amount_in_cents / 100
+    revenueReport.directNet.total = directResults[1].amount_in_cents / 100
+    revenueReport.totalNet.total += directResults[1].amount_in_cents / 100
     return revenueReport
   }
 
