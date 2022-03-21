@@ -96,7 +96,7 @@ export class RevenueController {
     let sinceDate = `${since.getUTCFullYear()}-${since.getUTCMonth() + 1}-${since.getUTCDate()}`
     let untilDate = `${until.getUTCFullYear()}-${until.getUTCMonth() + 1}-${until.getUTCDate()}`
 
-    let query = `select ot.TransactionType type, sum(Total)*100 total from FundyCentral.OrderTransaction ot
+    let query = `select ot.TransactionType type, sum(Total) total from FundyCentral.OrderTransaction ot
     join FundyCentral.Order o on ot.OrderId = o.id
     where ot.TransactionDate Between ? and ?
     and ot.Status = "APPROVED"
@@ -112,38 +112,39 @@ export class RevenueController {
     // console.log(results[0]["type"])
     // console.log(results[0]["total"])
     // let created_at = new Date(since)
-    let amount_in_cents = 0;
-    let directGrossResult: Partial<Transaction> =
-    {
-      id: 0,
-      type: 'payment',
-      created_at: since,
-      memo: 'direct gross revenue',
-      amount_in_cents: 0,
-      product_id: 0,
-      source: 'direct'
-    }
-    let directNetResult: Partial<Transaction> =
-    {
-      id: 1,
-      type: 'payment',
-      created_at: since,
-      memo: 'direct net revenue',
-      amount_in_cents: 0,
-      product_id: 0,
-      source: 'direct'
-    }
+    let directGrossResult = 0;
+    let directNetResult = 0;
+    // let directGrossResult: Partial<Transaction> =
+    // {
+    //   id: 0,
+    //   type: 'payment',
+    //   created_at: since,
+    //   memo: 'direct gross revenue',
+    //   amount_in_cents: 0,
+    //   product_id: 0,
+    //   source: 'direct'
+    // }
+    // let directNetResult: Partial<Transaction> =
+    // {
+    //   id: 1,
+    //   type: 'payment',
+    //   created_at: since,
+    //   memo: 'direct net revenue',
+    //   amount_in_cents: 0,
+    //   product_id: 0,
+    //   source: 'direct'
+    // }
     if (results) {
       for (let i = 0; i < results.length; i++) {
         if (results[i]["type"] == 'CREDIT') {
-          amount_in_cents -= results[i]["total"]
+          directGrossResult -= results[i]["total"]
         } else if (results[i]["type"] == 'AUTHORIZE' || results[i]["type"] == 'BRAINTREE') {
-          amount_in_cents += results[i]["total"]
+          directGrossResult += results[i]["total"]
         }
       }
     }
-    directGrossResult.amount_in_cents = amount_in_cents;
-    directNetResult.amount_in_cents = amount_in_cents * directCommission
+    // directGrossResult.amount_in_cents = amount_in_cents;
+    directNetResult = directGrossResult * directCommission
 
     let resultArray = [directGrossResult, directNetResult]
 
@@ -378,10 +379,10 @@ export class RevenueController {
         revenueReport.undetermined.total += amount
       )
     }
-    revenueReport.directGross.total = directResults[0].amount_in_cents / 100
-    revenueReport.totalGross.total += directResults[0].amount_in_cents / 100
-    revenueReport.directNet.total = directResults[1].amount_in_cents / 100
-    revenueReport.totalNet.total += directResults[1].amount_in_cents / 100
+    revenueReport.directGross.total = directResults[0]
+    revenueReport.totalGross.total += directResults[0]
+    revenueReport.directNet.total = directResults[1]
+    revenueReport.totalNet.total += directResults[1]
     return revenueReport
   }
 
