@@ -303,7 +303,6 @@ export class RevenueController {
         ? txn.amount_in_cents / 100
         : -(txn.amount_in_cents) / 100
       let productType = this.productService.getProductType(product_id, memo, kind, txn.amount_in_cents)
-      // let productType = "reOptIn";
 
       revenueReport.totalGross.total += amount
       revenueReport.totalNet.total += amount
