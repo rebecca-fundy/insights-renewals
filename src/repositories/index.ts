@@ -11,3 +11,4 @@ export * from './chargify-event.repository';
 export * from './refresh.repository';
 export * from './transaction.repository';
 export * from './transaction-sandbox.repository';
+export * from './direct-transaction.repository';

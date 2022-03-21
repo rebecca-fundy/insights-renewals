@@ -49,9 +49,6 @@ export class ProductTypeService {
     let productType = "undetermined"
     let isRenewal = memo.toLowerCase().includes('renew')
     let isReOptIn = kind?.includes("component_proration")
-    if (counter == 1) {
-      console.log(product_id, memo, kind, amount, isRenewal)
-    }
     if (isReOptIn) {
       productType = "reOptIn"
     } else if (this.isMonthLease(product_id) && isRenewal) {
@@ -76,7 +73,6 @@ export class ProductTypeService {
     } else if (this.isOldProofer(product_id)) {
       productType = "oldProofer"
     }
-    if (counter == 1) {console.log(productType)}
 
     return productType
   }

@@ -11,3 +11,4 @@ export * from './chargify-event.model';
 export * from './refresh.model';
 export * from './transaction.model';
 export * from './transaction-sandbox.model';
+export * from './direct-transaction.model';

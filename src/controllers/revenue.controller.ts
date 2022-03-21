@@ -11,13 +11,15 @@ import {
   response
 } from '@loopback/rest';
 import {Transaction} from '../models';
-import {RevenueReport, TransactionRepository} from '../repositories';
+import {DirectTransactionRepository, RevenueReport, TransactionRepository} from '../repositories';
 import {ProductTypeService} from '../services/product-type.service';
 
 export class RevenueController {
   constructor(
     @repository(TransactionRepository)
     public transactionRepository: TransactionRepository,
+    @repository(TransactionRepository)
+    public directTransactionRepository: DirectTransactionRepository,
     @inject('services.ProductTypeService')
     public productService: ProductTypeService
   ) { }
@@ -70,6 +72,41 @@ export class RevenueController {
     @param.filter(Transaction) filter?: Filter<Transaction>,
   ): Promise<Transaction[]> {
     return this.transactionRepository.find(filter);
+  }
+
+  @get('/direct-revenue')
+  @response(200, {
+    description: 'Array of Transaction model instances',
+    content: {
+      'application/json': {
+        schema: {
+          type: 'array',
+          items: getModelSchemaRef(Transaction, {includeRelations: true}),
+        },
+      },
+    },
+  })
+  async getDirect(
+    @param.query.date('since') since: Date,
+    @param.query.date('until') until: Date,
+    @param.filter(Transaction) filter?: Filter<Transaction>,
+  ): Promise<any> {
+    // ): Promise<Transaction[]> {
+    console.log(since)
+    let sinceDate = `${since.getUTCFullYear()}-${since.getUTCMonth() + 1}-${since.getUTCDate()}`
+    let untilDate = `${until.getUTCFullYear()}-${until.getUTCMonth() + 1}-${until.getUTCDate()}`
+
+    let query = `select ot.TransactionType, sum(Total) from FundyCentral.OrderTransaction ot
+    join FundyCentral.Order o on ot.OrderId = o.id
+    where ot.TransactionDate Between ? and ?
+    and ot.Status = "APPROVED"
+    and o.OrderType in ("ALBUM", "WALLART", "CARDS")
+    Group By ot.TransactionType;`
+
+    let params = [sinceDate, untilDate]
+    let result = await this.directTransactionRepository.execute(query, params)
+    console.log(result)
+    return result;
   }
 
   @get('/revenue-report')

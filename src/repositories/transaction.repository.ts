@@ -55,6 +55,7 @@ export class TransactionRepository extends DefaultCrudRepository<
 > {
   constructor(
     @inject('datasources.db') dataSource: DbDataSource,
+    // @inject('datasources.db-fundy-central') fundyCentral: DbFundyCentralDataSource
   ) {
     super(Transaction, dataSource);
   }
