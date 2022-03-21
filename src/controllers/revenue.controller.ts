@@ -96,7 +96,7 @@ export class RevenueController {
     let sinceDate = `${since.getUTCFullYear()}-${since.getUTCMonth() + 1}-${since.getUTCDate()}`
     let untilDate = `${until.getUTCFullYear()}-${until.getUTCMonth() + 1}-${until.getUTCDate()}`
 
-    let query = `select ot.TransactionType, sum(Total) from FundyCentral.OrderTransaction ot
+    let query = `select ot.TransactionType type, sum(Total) total from FundyCentral.OrderTransaction ot
     join FundyCentral.Order o on ot.OrderId = o.id
     where ot.TransactionDate Between ? and ?
     and ot.Status = "APPROVED"
@@ -105,7 +105,11 @@ export class RevenueController {
 
     let params = [sinceDate, untilDate]
     let result = await this.directTransactionRepository.execute(query, params)
-    console.log(result)
+    //Look in RevenueReport.java for processing this but it looks like commissions are 10%, and refunds are "credits"
+    const directCommission = 0.1
+    console.log(result[0])
+    console.log(result[0]["type"])
+    console.log(result[0]["total"])
     return result;
   }
 
