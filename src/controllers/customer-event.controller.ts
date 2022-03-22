@@ -118,11 +118,11 @@ export class CustomerEventController {
 
   async generateTable(): Promise<void> {
     let customerEventCount = isLive ? (await this.customerEventRepository.count()).count : (await this.customerEventSandboxRepository.count()).count;
-
+    console.log('customerEventCount: ' + customerEventCount)
     if (customerEventCount == 0) {
       //Setting of historical PE event data by customer
       let today = new Date();
-
+      console.log('debug generateTable')
       //Grab array of customers and events; events ordered by ascending creation date.
       const subscriptionArray = await (isLive ? this.subscriptionRepository.find() : this.subscriptionSandboxRepository.find());
       const eventArray = await this.eventController.find({order: ["subscription_id ASC", "created_at ASC"]})
@@ -135,7 +135,7 @@ export class CustomerEventController {
             let customer = customerArray[i]; //For each customer in the customer array...
             let indicesToSplice: number[] = [];
             let customerEvents = eventArray.filter((event, index) => {if (event.customer_id == customer.id) {indicesToSplice.push(index); return event} }) //Filter the events array to events for this customer
-            indicesToSplice.reverse().forEach(index => eventArray.splice(index, 1))
+            indicesToSplice.reverse().forEach(index => eventArray.splice(index, 1)) //remove processed events from events array so we don't have to process them again.
             let products = subscriptionArray.filter(subscription => subscription.customer_id === customer.id).sort() //List customer subscriptions oldest to newest
             let hasProduct = products.length //Filter condition for customers with no subscriptions
             const custCreationDate = !hasProduct ? new Date(customer.created_at) : new Date(products[0].created_at); //Set the customer creation date to the creation date of the first subscription. This will be the date that all the timepoints will be measured from. (If no subscriptions, it will be the customer creation date.)
@@ -147,7 +147,7 @@ export class CustomerEventController {
             let numSubscriptions = products.length;
             let currentSubscription = products[numSubscriptions - 1]
 
-            //For non-lease customers, "active" or "trialing" means most recent subscription is in an active state *and* PE is turned on.
+            //For non-lease customers, "active" or "trialing" means most recent subscription is in an active/trialing state *and* PE is turned on.
             let isActive = currentSubscription ? (currentSubscription.state == "active" && currentSubscription.peOn) : undefined;
             let isTrialing = currentSubscription ? (currentSubscription.state == "trialing" && currentSubscription.peOn) : undefined;
 
@@ -340,7 +340,13 @@ export class CustomerEventController {
   async find(
     @param.filter(CustomerEvent) filter?: Filter<CustomerEvent>,
   ): Promise<CustomerEvent[]> {
+    // const tableJoinQuery = "select Customer.id id, Customer.created_at created_at, Subscription.id subscription_id, Subscription.peOn peOn, EventDb.created_at event_date, EventDb.previous_allocation previous_allocation, EventDb.new_allocation new_allocation, EventDb.previous_subscription_state previous_subscription_state, EventDb.new_subscription_state new_subscription_state from Customer inner join Subscription on Customer.id = Subscription.customer_id inner join EventDb on EventDb.customer_id = Customer.id"
+    // let result = await this.customerEventRepository.execute(tableJoinQuery);
+    // console.log('result')
+    // console.log(result);
+    console.log('debug before generate table')
     await this.generateTable();
+    console.log('debug after generate table')
     return isLive ? this.customerEventRepository.find(filter) : this.customerEventSandboxRepository.find(filter);
   }
 
