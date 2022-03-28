@@ -2,7 +2,7 @@ import {ApplicationConfig, V4InsightsApplication} from './application';
 // const dotenv = require('dotenv').config();
 export * from './application';
 
-export async function main(options: ApplicationConfig = {rejectUnauthorized: false, }) {
+export async function main(options: ApplicationConfig = {}) {
   const app = new V4InsightsApplication(options);
   await app.boot();
   await app.start();
@@ -24,7 +24,6 @@ if (require.main === module) {
       // upon stop, set its value to `0`.
       // See https://www.npmjs.com/package/stoppable
       gracePeriodForClose: 5000, // 5 seconds
-      rejectUnauthorized: false,
       openApiSpec: {
         // useful when used with OpenAPI-to-GraphQL to locate your application
         setServersFromRequest: true,
