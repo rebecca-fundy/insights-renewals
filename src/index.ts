@@ -2,7 +2,7 @@ import {ApplicationConfig, V4InsightsApplication} from './application';
 // const dotenv = require('dotenv').config();
 export * from './application';
 
-export async function main(options: ApplicationConfig = {}) {
+export async function main(options: ApplicationConfig = {rejectUnauthorized: false, }) {
   const app = new V4InsightsApplication(options);
   await app.boot();
   await app.start();
