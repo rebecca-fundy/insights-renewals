@@ -325,6 +325,32 @@ export class CustomerEventController {
     return this.findDropOffs();
   }
 
+  //Experimental
+  @get('/customer-events/cust-event-table')
+  @response(200, {
+    description: 'CustomerEvent model count',
+    // content: {'application/json': {schema: CountSchema}},
+  })
+  async custEventTable(
+    @param.where(CustomerEvent) where?: Where<CustomerEvent>,
+  ): Promise<CustomerEvent[]> {
+    let customerEventTable = isLive ? 'CustomerEvent' : 'CustomerEventSandbox'
+
+    // let result = await this.customerEventRepository.execute(`
+    // select cust.id id, cust.created_at created_at, sub.id subscription_id, sub.peOn peOn, sub.product_id product_id, EventDb.created_at event_date, EventDb.key eventKey, EventDb.previous_allocation previous_allocation, EventDb.new_allocation new_allocation, EventDb.previous_subscription_state previous_subscription_state, EventDb.new_subscription_state new_subscription_state
+    // from Customer cust
+    // inner join Subscription sub
+    // on cust.id = sub.customer_id
+    // left join EventDb
+    // on cust.id = EventDb.customer_id
+    // order by subscription_id asc, event_date asc
+    // `)
+    let result = await this.customerRepository.find({include: ['subscriptions', 'eventDbs']})
+    console.log(result)
+    // .then(() => this.generateTable())
+    return this.find({limit: 100});
+  }
+
   @get('/customer-events')
   @response(200, {
     description: 'Array of CustomerEvent model instances',

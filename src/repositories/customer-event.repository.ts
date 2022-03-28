@@ -38,5 +38,6 @@ export class CustomerEventRepository extends DefaultCrudRepository<
     @inject('datasources.db') dataSource: DbDataSource,
   ) {
     super(CustomerEvent, dataSource);
+    console.log('debug customer-event.respository')
   }
 }
