@@ -16,12 +16,6 @@ import {Subscription, SubscriptionRelations} from '../models';
 import {ProjectionReport, SubscriptionRepository} from '../repositories';
 import {DateService} from '../services/date.service';
 
-// class SubscriptionArray extends <Subscription>[] {
-//   sum(key: any) : number {
-//     return this.reduce((a,b) => a + (b[key] || 0),0)
-//   }
-// }
-
 export class ProjectedRevenueController {
   constructor(
     @repository(SubscriptionRepository)
@@ -114,54 +108,59 @@ export class ProjectedRevenueController {
     console.log('param.since: ', since)
     console.log('param.until: ', until)
 
-    let monthGap = this.dateService.checkMonthGap(since, until);
+    //Adjust the 'until' parameter to the end of the day so that projections include all the expected revenue for that day.
+
+    let adjustedUntilParam = new Date(until)
+    adjustedUntilParam.setUTCHours(23, 59, 59, 999)
+
+    // let monthGap = this.dateService.checkMonthGap(since, until);
     let weekGap = this.dateService.checkWeekGap(since, until);
     let weekGapTodayUntil = this.dateService.checkWeekGap(today, until)
     console.log('week gap since until', weekGap)
     console.log('week gap today until', weekGapTodayUntil)
+
     //For month leases, the next_assessment_at is aways within one month of the current date.
     //This means that:
-    //(1) Any queries for farther in the future will return nothing for month leases.
+    //(1) Any projections with a simple date filter for further in the future will return nothing for month leases.
     //(2) Projections spanning multiple months will not include repeated revenue.
-    //To address (2), for any time spans > 30 days (4.3 weeks), multiply the est. renewal amount for all active subscriptions by a factor to adjust.
-    //To address (1), if start date is after current date and week gap > 4.3
+    //The routine below adjusts for these conditions.
+
     let monthLeaseSubs: (Subscription & SubscriptionRelations)[] = []
-    if (weekGapTodayUntil < 4.3) {
+    if (weekGapTodayUntil < 4.3) { //If the period we are projecting for ends less than a month from the current date, simply apply the date filter with the adjusted 'until' param.
+
       monthLeaseSubs = await this.subscriptionRepository.find({
         where: {
           and: [
-            {next_assessment_at: {between: [since, until]}},
+            {next_assessment_at: {between: [since, adjustedUntilParam]}},
             {state: "active"},
             {product_id: 5874830},
           ]
         }
       })
         .then(result => result.filter(sub => sub.cc_exp_year == 0 || sub.cc_exp_year > sinceYear || (sub.cc_exp_year == sinceYear && sub.cc_exp_month > sinceMonth - 1)));
-    } else if (weekGap < 4.3) {
+    } else if (weekGap < 4.3) { //If the end date of the projected period is more than a month out from the current date, but the projected period is still less than a month, then adjust the dates to get a projection for the current period that includes those dates. For example, a two-week projection several months from now will give the expected revenue for those same two weeks in the month extending from the current date.
       let sinceDay = since.getUTCDate()
       let currentDay = today.getUTCDate()
       let adjustedSince = new Date();
-      // let adjustedUntil = new Date();
       let monthGap = this.dateService.checkMonthGap(since, until)
       adjustedSince.setUTCFullYear(today.getUTCFullYear())
 
       if (sinceDay >= currentDay) {
         console.log('debug1');
-
         adjustedSince.setUTCMonth(today.getUTCMonth())
       } else {
         console.log('debug2');
         adjustedSince.setUTCMonth(today.getUTCMonth() + 1)
       }
       adjustedSince.setUTCDate(since.getUTCDate())
+      adjustedSince.setUTCHours(0, 0, 0, 0)
+
       let adjustedUntil = new Date(
         adjustedSince.getUTCFullYear(),
         adjustedSince.getUTCMonth() + monthGap,
         until.getUTCDate()
       )
-      // adjustedUntil = this.dateService.addUTCMonths(adjustedSince, monthGap)
-      console.log('adjustedSince: ' + adjustedSince);
-      console.log('adjustedUntil: ' + adjustedUntil);
+      adjustedUntil.setUTCHours(0, 0, 0, 0)
 
       monthLeaseSubs = await this.subscriptionRepository.find({
         where: {
@@ -173,9 +172,7 @@ export class ProjectedRevenueController {
         }
       })
         .then(result => result.filter(sub => sub.cc_exp_year == 0 || sub.cc_exp_year > sinceYear || (sub.cc_exp_year == sinceYear && sub.cc_exp_month > sinceMonth - 1)));
-    } else {
-      console.log('debug3');
-
+    } else { //If the date range we are projecting for is longer than a month (for example, projecting for next quarter), we just sum the total renewal amount for all the active monthly subscriptions (which would be a month's revenue), then scale it by the number of months.
       monthLeaseSubs = await this.subscriptionRepository.find({
         where: {
           and: [
@@ -189,20 +186,14 @@ export class ProjectedRevenueController {
 
 
     for (let sub of monthLeaseSubs) {
-      // if (sub.cc_exp_year == sinceYear) {
-      //   console.log(sinceMonth, sinceYear);
-      //   console.log(sub.id, sub.cc_exp_month, sub.cc_exp_year)
-      // }
       monthRenewAmt += sub.est_renew_amt
     }
 
     //4.43 is num of weeks in a 31-day month.
-    //Any time gap between 4 and 4.43 is likely looking for a calendar month.
+    //Any time gap between 4 weeks and 4.43 weeks is likely looking for a calendar month.
     //If we are looking at a period of time greater than a month, we want to scale up the projected amount the proportional number.
     //More accurate would be to add on the number of subscriptions that are due in that part of the month that is over the single month.
     if (weekGap > 4.43) {
-      console.log('debug4');
-
       monthRenewAmt = monthRenewAmt * (weekGap / 4.3)
     }
 
@@ -213,7 +204,7 @@ export class ProjectedRevenueController {
     let yearLeaseSubs = await this.subscriptionRepository.find({
       where: {
         and: [
-          {next_assessment_at: {between: [since, until]}},
+          {next_assessment_at: {between: [since, adjustedUntilParam]}},
           {state: "active"},
           {product_id: 5135042},
         ]
@@ -230,7 +221,7 @@ export class ProjectedRevenueController {
     let peSubs = await this.subscriptionRepository.find({
       where: {
         and: [
-          {next_assessment_at: {between: [since, until]}},
+          {next_assessment_at: {between: [since, adjustedUntilParam]}},
           {or: [{state: "active"}, {state: "trialing"}]},
           {product_id: {nin: [5874830, 5135042]}},
           {peOn: true}
