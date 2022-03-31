@@ -47,8 +47,6 @@ export class DateService {
     d2.setUTCHours(0, 0, 0, 0)
     let d1ms = d1.getTime()
     let d2ms = d2.getTime()
-    // return (d2ms - d1ms) / (24 * 60 * 60 * 1000);
     return (d2ms - d1ms) / (7 * 24 * 60 * 60 * 1000);
-    // return Math.round((d2 - d1) / (7 * 24 * 60 * 60 * 1000));
   }
 }

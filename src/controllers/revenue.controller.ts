@@ -382,6 +382,7 @@ export class RevenueController {
     revenueReport.totalGross.total += directResults[0]
     revenueReport.directNet.total = directResults[1]
     revenueReport.totalNet.total += directResults[1]
+
     return revenueReport
   }
 

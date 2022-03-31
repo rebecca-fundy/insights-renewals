@@ -92,7 +92,7 @@ export class ProjectedRevenueController {
     let totalTrialAmt = 0
     let totalActiveAmt = 0
 
-    let subCount = (await (this.subscriptionRepository.count())).count
+    // let subCount = (await (this.subscriptionRepository.count())).count
 
     if (!since) {
       since = firstDay;
@@ -184,7 +184,6 @@ export class ProjectedRevenueController {
         .then(result => result.filter(sub => sub.cc_exp_year == 0 || sub.cc_exp_year > sinceYear || (sub.cc_exp_year == sinceYear && sub.cc_exp_month > sinceMonth - 1)));
     }
 
-
     for (let sub of monthLeaseSubs) {
       monthRenewAmt += sub.est_renew_amt
     }
@@ -239,13 +238,6 @@ export class ProjectedRevenueController {
         peTrialAmt += sub.est_renew_amt
       }
     }
-    console.log('total sub count: ' + subCount)
-    console.log('monthLeaseSubs.length: ' + monthLeaseSubs.length)
-    console.log('monthLeaseSubs.total: ' + monthRenewAmt)
-    console.log('yearLeaseSubs.length: ' + yearLeaseSubs.length)
-    console.log('yearLeaseSubs.total: ' + yearRenewAmt)
-    console.log('peSubs.length: ' + peSubs.length)
-    console.log('peSubs.total: ' + peRenewAmt)
 
     let totalRenewAmt = monthRenewAmt + yearRenewAmt + peRenewAmt;
     totalTrialAmt = peTrialAmt + monthTrialAmt + yearTrialAmt;
