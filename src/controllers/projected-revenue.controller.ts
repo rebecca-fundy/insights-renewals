@@ -126,7 +126,7 @@ export class ProjectedRevenueController {
     //The routine below adjusts for these conditions.
 
     let monthLeaseSubs: (Subscription & SubscriptionRelations)[] = []
-    if (weekGapTodayUntil < 4.3) { //If the period we are projecting for ends less than a month from the current date, simply apply the date filter with the adjusted 'until' param.
+    if (weekGapTodayUntil < 4.43) { //If the period we are projecting for ends less than a month from the current date, simply apply the date filter with the adjusted 'until' param.
 
       monthLeaseSubs = await this.subscriptionRepository.find({
         where: {
@@ -138,7 +138,7 @@ export class ProjectedRevenueController {
         }
       })
         .then(result => result.filter(sub => sub.cc_exp_year == 0 || sub.cc_exp_year > sinceYear || (sub.cc_exp_year == sinceYear && sub.cc_exp_month > sinceMonth - 1)));
-    } else if (weekGap < 4.3) { //If the end date of the projected period is more than a month out from the current date, but the projected period is still less than a month, then adjust the dates to get a projection for the current period that includes those dates. For example, a two-week projection several months from now will give the expected revenue for those same two weeks in the month extending from the current date.
+    } else if (weekGap < 4.43) { //If the end date of the projected period is more than a month out from the current date, but the projected period is still less than a month, then adjust the dates to get a projection for the current period that includes those dates. For example, a two-week projection several months from now will give the expected revenue for those same two weeks in the month extending from the current date.
       let sinceDay = since.getUTCDate()
       let currentDay = today.getUTCDate()
       let adjustedSince = new Date();
@@ -151,6 +151,7 @@ export class ProjectedRevenueController {
       } else {
         console.log('debug2');
         adjustedSince.setUTCMonth(today.getUTCMonth() + 1)
+        console.log(adjustedSince)
       }
       adjustedSince.setUTCDate(since.getUTCDate())
       adjustedSince.setUTCHours(0, 0, 0, 0)
