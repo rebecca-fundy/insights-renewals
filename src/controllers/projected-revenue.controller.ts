@@ -118,7 +118,8 @@ export class ProjectedRevenueController {
     let weekGapTodayUntil = this.dateService.checkWeekGap(today, until)
     console.log('week gap since until', weekGap)
     console.log('week gap today until', weekGapTodayUntil)
-
+    console.log('param.since: ', since)
+    console.log('param.until: ', adjustedUntilParam)
     //For month leases, the next_assessment_at is aways within one month of the current date.
     //This means that:
     //(1) Any projections with a simple date filter for further in the future will return nothing for month leases.
