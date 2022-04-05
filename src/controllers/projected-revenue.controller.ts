@@ -163,18 +163,18 @@ export class ProjectedRevenueController {
       let monthGap = this.dateService.checkMonthGap(since, until)
       adjustedSince.setUTCFullYear(today.getUTCFullYear())
 
-      if (sinceDay >= currentDay && untilDay >= currentDay) {
+      if (sinceDay >= currentDay && untilDay >= currentDay && sinceDay <= untilDay) { //e.g. today is Apr 4 and we are projecting for May 15 - May 30
         console.log('debug1');
-        adjustedSince.setUTCMonth(today.getUTCMonth())
+        adjustedSince.setUTCMonth(today.getUTCMonth()) //reset month to current month (if today is Apr 4, we want to reset to Apr 15 - Apr 30)
         adjustedSince.setUTCDate(since.getUTCDate())
         adjustedSince.setUTCHours(0, 0, 0, 0)
         adjustedUntil.setUTCFullYear(adjustedSince.getUTCFullYear())
         adjustedUntil.setUTCMonth(adjustedSince.getUTCMonth())
         adjustedUntil.setUTCDate(untilDay)
         adjustedUntil.setUTCHours(23, 59, 59, 999)
-      } else if (sinceDay < currentDay && untilDay < currentDay) {
+      } else if (sinceDay < currentDay && untilDay < currentDay && sinceDay <= untilDay) { //e.g. today is Apr 20 and we are projecting for June 1 - June 15
         console.log('debug2');
-        adjustedSince.setUTCMonth(today.getUTCMonth() + 1)
+        adjustedSince.setUTCMonth(today.getUTCMonth() + 1) //reset month to month after current one (if today is Apr. 20, we want to reset for May 1 - May 15)
         adjustedSince.setUTCDate(since.getUTCDate())
         adjustedSince.setUTCHours(0, 0, 0, 0)
         adjustedUntil.setUTCFullYear(adjustedSince.getUTCFullYear())
@@ -182,36 +182,50 @@ export class ProjectedRevenueController {
         adjustedUntil.setUTCDate(untilDay)
         adjustedUntil.setUTCHours(23, 59, 59, 999)
         console.log(adjustedSince)
-      } else if (sinceDay < currentDay && untilDay >= currentDay) {//need two intervals: current month for valid future renewal dates, and the next month for dates already past in the the current month. For example: if current date is April 4, and projection is for 5/1 - 5/15, we will have valid renewal dates from 4/5 - 4/15 and 5/1 - 5/3.
-        console.log('debug3')
-        adjustedSince.setUTCMonth(today.getUTCMonth() + 1)
-        adjustedSince.setUTCDate(1)
-        adjustedSince.setUTCHours(0, 0, 0, 0)
-        adjustedUntil.setUTCMonth(adjustedSince.getUTCMonth())
-        adjustedUntil.setUTCDate(today.getUTCDate() - 1)
-        adjustedUntil.setUTCHours(23, 59, 59, 999)
-        interval2Since.setUTCFullYear(today.getUTCFullYear());
-        interval2Since.setUTCMonth(today.getUTCMonth())
-        interval2Since.setUTCDate(today.getUTCDate())
-        interval2Since.setUTCHours(0, 0, 0, 0)
-        interval2Until.setUTCFullYear(interval2Since.getUTCFullYear())
-        interval2Until.setUTCMonth(today.getUTCMonth())
-        interval2Until.setUTCDate(until.getUTCDate())
-        interval2Until.setUTCHours(23, 59, 59, 999)
-        console.log(`adjustedSince interval: ${adjustedSince}, ${adjustedUntil}`);
-        console.log(`interval2: ${interval2Since}, ${interval2Until}`);
-
-      } else if (sinceDay >= currentDay && untilDay < currentDay) { //e.g. current date is April 18 and projection is for June 15 - 30
-        console.log('debug4')
+      } else {//if current date is between since and until, we need two intervals: current month for valid future renewal dates, and the next month for dates already past in the the current month. For example: if current date is April 4, and projection is for 5/1 - 5/15, we will have valid renewal dates from 4/5 - 4/15 and 5/1 - 5/3.
+        if (untilDay > sinceDay) {
+          console.log('debug3')
+          adjustedSince.setUTCFullYear(today.getUTCFullYear())
+          adjustedSince.setUTCMonth(today.getUTCMonth() + 1)
+          adjustedSince.setUTCDate(1)
+          adjustedSince.setUTCHours(0, 0, 0, 0)
+          adjustedUntil.setUTCMonth(adjustedSince.getUTCMonth())
+          adjustedUntil.setUTCDate(today.getUTCDate() - 1)
+          adjustedUntil.setUTCHours(23, 59, 59, 999)
+          interval2Since.setUTCFullYear(today.getUTCFullYear());
+          interval2Since.setUTCMonth(today.getUTCMonth())
+          interval2Since.setUTCDate(today.getUTCDate())
+          interval2Since.setUTCHours(0, 0, 0, 0)
+          interval2Until.setUTCFullYear(interval2Since.getUTCFullYear())
+          interval2Until.setUTCMonth(today.getUTCMonth())
+          interval2Until.setUTCDate(until.getUTCDate())
+          interval2Until.setUTCHours(23, 59, 59, 999)
+        } else if (untilDay <= sinceDay) {
+          console.log('debug4')
+          adjustedSince.setUTCFullYear(today.getUTCFullYear())
+          adjustedSince.setUTCMonth(today.getUTCMonth())
+          adjustedSince.setUTCDate(sinceDay)
+          adjustedSince.setUTCHours(0, 0, 0, 0)
+          adjustedUntil.setUTCMonth(adjustedSince.getUTCMonth() + 1)
+          adjustedUntil.setUTCDate(0)
+          adjustedUntil.setUTCHours(23, 59, 59, 999)
+          interval2Since.setUTCFullYear(today.getUTCFullYear());
+          interval2Since.setUTCMonth(today.getUTCMonth() + 1)
+          interval2Since.setUTCDate(1)
+          interval2Since.setUTCHours(0, 0, 0, 0)
+          interval2Until.setUTCFullYear(interval2Since.getUTCFullYear())
+          interval2Until.setUTCMonth(today.getUTCMonth() + 1)
+          interval2Until.setUTCDate(until.getUTCDate())
+          interval2Until.setUTCHours(23, 59, 59, 999)
+        }
       }
-
-      let next_assessment_at_query = `{between: [${adjustedSince}, ${adjustedUntil}]}`
+      console.log(`adjustedSince interval: ${adjustedSince}, ${adjustedUntil}`);
+      console.log(`interval2: ${interval2Since}, ${interval2Until}`);
 
       monthLeaseSubs = await this.subscriptionRepository.find({
         where: {
           and: [
             {or: [{next_assessment_at: {between: [adjustedSince, adjustedUntil]}}, {next_assessment_at: {between: [interval2Since, interval2Until]}}]},
-            // {next_assessment_at: {between: [adjustedSince, adjustedUntil]}},
             {state: "active"},
             {product_id: 5874830},
           ]
