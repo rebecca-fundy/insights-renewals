@@ -116,6 +116,8 @@ export class ProjectedRevenueController {
     // let monthGap = this.dateService.checkMonthGap(since, until);
     let weekGap = this.dateService.checkWeekGap(since, until);
     let weekGapTodayUntil = this.dateService.checkWeekGap(today, until)
+    let isCalendarMonth = this.dateService.isCalendarMonth(since, until)
+    console.log(isCalendarMonth)
     console.log('week gap since until', weekGap)
     console.log('week gap today until', weekGapTodayUntil)
     console.log('param.since: ', since)
@@ -127,8 +129,18 @@ export class ProjectedRevenueController {
     //The routine below adjusts for these conditions.
 
     let monthLeaseSubs: (Subscription & SubscriptionRelations)[] = []
-    if (weekGapTodayUntil < 4.43) { //If the period we are projecting for ends less than a month from the current date, simply apply the date filter with the adjusted 'until' param.
+    if (isCalendarMonth || weekGap > 4.43) {//If the date range we are projecting for is a calender month or more we sum the renewal amounts for all active monthly subscriptions.
+      monthLeaseSubs = await this.subscriptionRepository.find({
+        where: {
+          and: [
+            {state: "active"},
+            {product_id: 5874830},
+          ]
+        }
+      })
+        .then(result => result.filter(sub => sub.cc_exp_year == 0 || sub.cc_exp_year > sinceYear || (sub.cc_exp_year == sinceYear && sub.cc_exp_month > sinceMonth - 1)));
 
+    } else if (weekGapTodayUntil < 4.43) { //If the period we are projecting for ends less than a month from the current date, simply apply the date filter with the adjusted 'until' param.
       monthLeaseSubs = await this.subscriptionRepository.find({
         where: {
           and: [
@@ -139,45 +151,67 @@ export class ProjectedRevenueController {
         }
       })
         .then(result => result.filter(sub => sub.cc_exp_year == 0 || sub.cc_exp_year > sinceYear || (sub.cc_exp_year == sinceYear && sub.cc_exp_month > sinceMonth - 1)));
-    } else if (weekGap < 4.43) { //If the end date of the projected period is more than a month out from the current date, but the projected period is still less than a month, then adjust the dates to get a projection for the current period that includes those dates. For example, a two-week projection several months from now will give the expected revenue for those same two weeks in the month extending from the current date.
+
+    } else if (weekGap < 4.43) { //If the end date of the projected period is more than a month out from the current date, but the projected period is less than a month, then adjust the dates to get a projection for the current period that includes those dates. For example, a two-week projection several months from now will give the expected revenue for those same two weeks in the month extending from the current date.
       let sinceDay = since.getUTCDate()
       let currentDay = today.getUTCDate()
+      let untilDay = until.getUTCDate()
       let adjustedSince = new Date();
+      let adjustedUntil = new Date();
+      let interval2Since = new Date();
+      let interval2Until = new Date();
       let monthGap = this.dateService.checkMonthGap(since, until)
       adjustedSince.setUTCFullYear(today.getUTCFullYear())
 
-      if (sinceDay >= currentDay) {
+      if (sinceDay >= currentDay && untilDay >= currentDay) {
         console.log('debug1');
         adjustedSince.setUTCMonth(today.getUTCMonth())
-      } else {
+        adjustedSince.setUTCDate(since.getUTCDate())
+        adjustedSince.setUTCHours(0, 0, 0, 0)
+        adjustedUntil.setUTCFullYear(adjustedSince.getUTCFullYear())
+        adjustedUntil.setUTCMonth(adjustedSince.getUTCMonth())
+        adjustedUntil.setUTCDate(untilDay)
+        adjustedUntil.setUTCHours(23, 59, 59, 999)
+      } else if (sinceDay < currentDay && untilDay < currentDay) {
         console.log('debug2');
         adjustedSince.setUTCMonth(today.getUTCMonth() + 1)
+        adjustedSince.setUTCDate(since.getUTCDate())
+        adjustedSince.setUTCHours(0, 0, 0, 0)
+        adjustedUntil.setUTCFullYear(adjustedSince.getUTCFullYear())
+        adjustedUntil.setUTCMonth(adjustedSince.getUTCMonth())
+        adjustedUntil.setUTCDate(untilDay)
+        adjustedUntil.setUTCHours(23, 59, 59, 999)
         console.log(adjustedSince)
+      } else if (sinceDay < currentDay && untilDay >= currentDay) {//need two intervals: current month for valid future renewal dates, and the next month for dates already past in the the current month. For example: if current date is April 4, and projection is for 5/1 - 5/15, we will have valid renewal dates from 4/5 - 4/15 and 5/1 - 5/3.
+        console.log('debug3')
+        adjustedSince.setUTCMonth(today.getUTCMonth() + 1)
+        adjustedSince.setUTCDate(1)
+        adjustedSince.setUTCHours(0, 0, 0, 0)
+        adjustedUntil.setUTCMonth(adjustedSince.getUTCMonth())
+        adjustedUntil.setUTCDate(today.getUTCDate() - 1)
+        adjustedUntil.setUTCHours(23, 59, 59, 999)
+        interval2Since.setUTCFullYear(today.getUTCFullYear());
+        interval2Since.setUTCMonth(today.getUTCMonth())
+        interval2Since.setUTCDate(today.getUTCDate())
+        interval2Since.setUTCHours(0, 0, 0, 0)
+        interval2Until.setUTCFullYear(interval2Since.getUTCFullYear())
+        interval2Until.setUTCMonth(today.getUTCMonth())
+        interval2Until.setUTCDate(until.getUTCDate())
+        interval2Until.setUTCHours(23, 59, 59, 999)
+        console.log(`adjustedSince interval: ${adjustedSince}, ${adjustedUntil}`);
+        console.log(`interval2: ${interval2Since}, ${interval2Until}`);
+
+      } else if (sinceDay >= currentDay && untilDay < currentDay) { //e.g. current date is April 18 and projection is for June 15 - 30
+        console.log('debug4')
       }
-      adjustedSince.setUTCDate(since.getUTCDate())
-      adjustedSince.setUTCHours(0, 0, 0, 0)
 
-      let adjustedUntil = new Date(
-        adjustedSince.getUTCFullYear(),
-        adjustedSince.getUTCMonth() + monthGap,
-        until.getUTCDate()
-      )
-      adjustedUntil.setUTCHours(0, 0, 0, 0)
+      let next_assessment_at_query = `{between: [${adjustedSince}, ${adjustedUntil}]}`
 
       monthLeaseSubs = await this.subscriptionRepository.find({
         where: {
           and: [
-            {next_assessment_at: {between: [adjustedSince, adjustedUntil]}},
-            {state: "active"},
-            {product_id: 5874830},
-          ]
-        }
-      })
-        .then(result => result.filter(sub => sub.cc_exp_year == 0 || sub.cc_exp_year > sinceYear || (sub.cc_exp_year == sinceYear && sub.cc_exp_month > sinceMonth - 1)));
-    } else { //If the date range we are projecting for is longer than a month (for example, projecting for next quarter), we just sum the total renewal amount for all the active monthly subscriptions (which would be a month's revenue), then scale it by the number of months.
-      monthLeaseSubs = await this.subscriptionRepository.find({
-        where: {
-          and: [
+            {or: [{next_assessment_at: {between: [adjustedSince, adjustedUntil]}}, {next_assessment_at: {between: [interval2Since, interval2Until]}}]},
+            // {next_assessment_at: {between: [adjustedSince, adjustedUntil]}},
             {state: "active"},
             {product_id: 5874830},
           ]
@@ -195,7 +229,7 @@ export class ProjectedRevenueController {
     //If we are looking at a period of time greater than a month, we want to scale up the projected amount the proportional number.
     //More accurate would be to add on the number of subscriptions that are due in that part of the month that is over the single month.
     if (weekGap > 4.43) {
-      monthRenewAmt = monthRenewAmt * (weekGap / 4.3)
+      monthRenewAmt = monthRenewAmt * (weekGap / 4.43)
     }
 
     monthActiveAmt = monthRenewAmt

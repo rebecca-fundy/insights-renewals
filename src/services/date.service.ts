@@ -49,4 +49,33 @@ export class DateService {
     let d2ms = d2.getTime()
     return (d2ms - d1ms) / (7 * 24 * 60 * 60 * 1000);
   }
+
+  isCalendarMonth(startDate: Date, endDate: Date): boolean {
+    const lastDayOfMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    const lastDayOfMonthLeapYear = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    let isLeapYear = startDate.getUTCFullYear() % 4 == 0
+    let startMonth = startDate.getUTCMonth();
+    let endMonth = endDate.getUTCMonth();
+    console.log('isLeapYear: ', isLeapYear);
+    console.log('startMonth: ', startMonth)
+    console.log('endMonth: ', endMonth)
+    console.log('startDate: ', startDate.getUTCDate())
+    console.log('endDate: ', endDate.getUTCDate())
+    if (
+      (startMonth == endMonth) &&
+      (
+        (!isLeapYear &&
+          (startDate.getUTCDate() == 1 &&
+            endDate.getUTCDate() == lastDayOfMonth[startMonth])
+        ) ||
+        (isLeapYear &&
+          (startDate.getUTCDate() == 1 &&
+            endDate.getUTCDate() == lastDayOfMonthLeapYear[startMonth])
+        )
+      )
+    ) {
+      return true
+    }
+    return false
+  }
 }
