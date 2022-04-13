@@ -55,7 +55,7 @@ export class ProductTypeService {
       productType = "monthLeaseRenewal"
     } else if (this.isYearLease(product_id) && isRenewal) {
       productType = "yearLeaseRenewal"
-    } else if (isRenewal || amount == 17900) {
+    } else if (isRenewal || amount == 17900 || amount == 19900) {
       productType = "peRenewal"
     } else if (this.isMonthLease(product_id)) {
       productType = "monthLease"
