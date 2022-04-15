@@ -117,7 +117,7 @@ export class CustomerEventController {
   }
 
 
-  async generateTable(): Promise<void> {
+  async generateTableOld(): Promise<void> {
     let customerEventCount = isLive ? (await this.customerEventRepository.count()).count : (await this.customerEventSandboxRepository.count()).count;
     console.log('customerEventCount: ' + customerEventCount)
     if (customerEventCount == 0) {
@@ -332,7 +332,8 @@ export class CustomerEventController {
     description: 'CustomerEvent model count',
     // content: {'application/json': {schema: CountSchema}},
   })
-  async custEventTable(
+  async generateTable(
+    // async custEventTable(
     @param.where(CustomerEvent) where?: Where<CustomerEvent>,
   ): Promise<CustomerEvent[]> {
     // let customerEventTable = isLive ? 'CustomerEvent' : 'CustomerEventSandbox'
