@@ -205,7 +205,8 @@ export class CustomerEventController {
                 peAlreadyOff = false
                 data.isActive = true
                 data.isTrialing = false
-              } else if (event.new_subscription_state == "canceled" && !peAlreadyOff) {
+              } else if ((event.new_subscription_state == "canceled" || event.new_subscription_state == "unpaid" || event.new_subscription_state == "past_due") && !peAlreadyOff) {
+                // } else if (event.new_subscription_state == "canceled" && !peAlreadyOff) {
                 data[timePointKey] = true
                 peAlreadyOff = true
                 data.isActive = false
