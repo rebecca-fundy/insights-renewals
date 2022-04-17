@@ -20,7 +20,7 @@ const config = {
     {
       template: {
         method: 'GET',
-        url: `https://${url}/events.json?date_field=created_at&filter=component_allocation_change,subscription_state_change&direction=asc&per_page=200&page={page}&since_id={since_id}`,
+        url: `https://${url}/events.json?date_field=created_at&filter=signup_success,component_allocation_change,subscription_state_change&direction=asc&per_page=200&page={page}&since_id={since_id}`,
       },
       functions:
       {

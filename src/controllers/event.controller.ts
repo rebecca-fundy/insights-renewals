@@ -97,6 +97,7 @@ export class EventController {
         await this.eventService.getEvents(j, since_id) //Grab a page of events from Chargify
           .then(tempArray => { //Add it to the array of already-fetched events
             eventArrayFetch = eventArrayFetch.concat(tempArray);
+            console.log(j)
             return tempArray
           })
           .then(tempArray => { //If the length of the fetched array is less than 200, there are no more pages to collect so stop the loop.
@@ -122,7 +123,7 @@ export class EventController {
           new_allocation: eventItem.event_specific_data.new_allocation,
           allocation_id: eventItem.event_specific_data.allocation_id,
           previous_subscription_state: eventItem.event_specific_data.previous_subscription_state,
-          new_subscription_state: eventItem.event_specific_data.new_subscription_state
+          new_subscription_state: eventItem.key == "signup_success" ? "active" : eventItem.event_specific_data.new_subscription_state
         }
         if (process.env.CHARGIFY_ENV == "live") {
           await this.eventDbRepository.create(eventData)
