@@ -276,37 +276,6 @@ export class CustomerEventController {
             events = orderedEvents;
             // if (customer.id == customerOfInterest) {console.log('numEvents ' + events.length)}
 
-<<<<<<< HEAD
-
-            function setTimepoint(event: EventDb, timePoint: string): void {
-
-              let timePointKey: TimeKey | TimeKeyMonthly = getTimepointKey(timePoint)
-
-              if (event.previous_allocation == 1 && event.new_allocation == 0 && !peAlreadyOff) {
-                data[timePointKey] = true
-                peStatus = "off";
-                peAlreadyOff = true;
-                data.isActive = false
-                data.isTrialing = false
-              } else if (event.previous_allocation == 0 && event.new_allocation == 1) {//Chargify generates this type of allocation event when a customer upgrades with PE on.
-                data[timePointKey] = false;
-                peStatus = "on"
-                peAlreadyOff = false
-                data.isActive = true
-                data.isTrialing = false
-              } else if ((event.new_subscription_state == "canceled" || event.new_subscription_state == "unpaid" || event.new_subscription_state == "past_due") && !peAlreadyOff) {
-                // } else if (event.new_subscription_state == "canceled" && !peAlreadyOff) {
-                data[timePointKey] = true
-                peAlreadyOff = true
-                data.isActive = false
-                data.isTrialing = false
-              } else if (event.new_subscription_state == "active" && (peStatus == "on" || (data.productType !== "non-lease"))) {
-                data[timePointKey] = false
-                peAlreadyOff = false
-                data.isActive = true
-                data.isTrialing = false
-              }
-=======
           }
           // if (customer.id == customerOfInterest) {
           //   console.log('eventsAfterRearranging')
@@ -316,7 +285,6 @@ export class CustomerEventController {
 
             if (event.created_at <= signup && productType == "non-lease") {
               setTimepoint(event, 'signup')
->>>>>>> generateCustEventTblWithQuery
             }
             else if (event.created_at <= oneMonth && productType == "month lease") {
               setTimepoint(event, 'oneMonth');
