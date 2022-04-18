@@ -356,13 +356,25 @@ export class WebhookController {
       created_at: new Date(eventCreationDate)
     }
 
+    let eventData: Partial<EventDb> = {
+      id: parseInt(payload["event_id"], 10),
+      new_subscription_state: "active",
+      subscription_id,
+      customer_id,
+      key: "subscription_state_change",
+      created_at: eventCreationDate
+    }
+
     try { //If the customer id already exists in the customer repo this will throw an error
       console.log('signup_success')
       subdomain == "fundy-suite"
         ? await this.customerRepository.create(customerData)
         : await this.customerSandboxRepository.create(customerData)
-    } catch (error) {
+    } catch (error) {//If there's already a customer, we need to create an subscription state change event to toggle subscription state back to "active" for the dropoff calculation.
       console.log(error.message)
+      subdomain == "fundy-suite"
+        ? await this.eventDbRepository.create(eventData)
+        : await this.eventDbSandboxRepository.create(eventCreationDate)
     } try {
       subdomain == "fundy-suite"
         ? await this.subscriptionRepository.create(newSubscriptionData)

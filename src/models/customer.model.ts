@@ -12,16 +12,6 @@ export class Customer extends Entity {
   })
   id: number;
 
-  // @property({
-  //   type: 'string',
-  // })
-  // first_name?: string;
-
-  // @property({
-  //   type: 'string',
-  // })
-  // last_name?: string;
-
   @property({
     type: 'date',
   })
