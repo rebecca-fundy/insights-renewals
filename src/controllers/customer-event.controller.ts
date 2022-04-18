@@ -359,12 +359,12 @@ export class CustomerEventController {
     // let result = await this.customerEventRepository.execute(tableJoinQuery);
     // console.log('result')
     // console.log(result);
-    console.log('debug before generate table')
+    // console.log('debug before generate table')
     let customerEventCount = isLive ? (await this.customerEventRepository.count()).count : (await this.customerEventSandboxRepository.count()).count;
     if (customerEventCount == 0) {
       await this.generateTable();
     }
-    console.log('debug after generate table')
+    // console.log('debug after generate table')
     return isLive ? this.customerEventRepository.find(filter) : this.customerEventSandboxRepository.find(filter);
   }
 
@@ -494,7 +494,7 @@ export class CustomerEventController {
       }
 
       let totalCust = (await this.find(productFilter));
-      console.log(productType, totalCust.length)
+      // console.log(productType, totalCust.length)
       if (productType == "non-lease") {
         dropoffArray[i] = this.generateProDropoffTable(totalCust)
       }
