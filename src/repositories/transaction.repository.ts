@@ -44,9 +44,11 @@ export interface RevenueReport {
   oldProofer: AuthorizeField,
   directGross: ProductField,
   directNet: ProductField,
-  undetermined: ProductField
-  totalGross: TotalField
-  totalNet: TotalField
+  undetermined: ProductField,
+  totalGross: TotalField,
+  totalNet: TotalField,
+  newRev: TotalField,
+  saasRev: TotalField
 }
 
 export class TransactionRepository extends DefaultCrudRepository<

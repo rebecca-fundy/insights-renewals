@@ -7,6 +7,7 @@ const v10CrossIds: number[] = [4452098, 5153304, 5152248]
 const v10AlbumIds: number[] = [5135020, 5081976]
 const upgradeIds: number[] = [3805476, 3805492, 4316817, 4433849, 4445987, 4445988, 4445989, 4445990, 4445991, 4445994, 4452106, 4452107, 4480069, 4480614, 4480616, 4480619, 4481015, 4683863, 5135017, 5135018, 5135019, 4466594, 5085553, 5084462, 5084205, 4631030, 4624053, 4624049, 4624044, 4624042, 4624031, 4466604, 4466603, 4466602, 4466601, 4466600, 4466599, 4466598, 4466597, 4466596, 4466595, 4466593, 4466606]
 const oldProoferIds: number[] = [27089, 27093, 27094, 3296637, 3761050]
+const saasProductTypes: string[] = ["monthLeaseRenewal", "yearLeaseRenewal", "peRenewal", "oldProofer"]
 
 @injectable({scope: BindingScope.TRANSIENT})
 export class ProductTypeService {
@@ -74,6 +75,13 @@ export class ProductTypeService {
     }
 
     return productType
+  }
+
+  getRevenueType(productType: string) {
+    if (saasProductTypes.includes(productType)) {
+      return "saasRevenue"
+    }
+    return "newRevenue"
   }
 
 }

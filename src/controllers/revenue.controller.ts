@@ -105,35 +105,12 @@ export class RevenueController {
 
     let params = [sinceDate, untilDate]
     let results = await this.directTransactionRepository.execute(query, params)
-    // let results: DirectResult[] = await this.directTransactionRepository.execute(query, params)
-    //Look in RevenueReport.java for processing this but it looks like commissions are 10%, and refunds are "credits"
+
     const directCommission = 0.12
-    // console.log(results[0])
-    // console.log(results[0]["type"])
-    // console.log(results[0]["total"])
-    // let created_at = new Date(since)
+
     let directGrossResult = 0;
     let directNetResult = 0;
-    // let directGrossResult: Partial<Transaction> =
-    // {
-    //   id: 0,
-    //   type: 'payment',
-    //   created_at: since,
-    //   memo: 'direct gross revenue',
-    //   amount_in_cents: 0,
-    //   product_id: 0,
-    //   source: 'direct'
-    // }
-    // let directNetResult: Partial<Transaction> =
-    // {
-    //   id: 1,
-    //   type: 'payment',
-    //   created_at: since,
-    //   memo: 'direct net revenue',
-    //   amount_in_cents: 0,
-    //   product_id: 0,
-    //   source: 'direct'
-    // }
+
     if (results) {
       for (let i = 0; i < results.length; i++) {
         if (results[i]["type"] == 'CREDIT') {
@@ -143,7 +120,7 @@ export class RevenueController {
         }
       }
     }
-    // directGrossResult.amount_in_cents = amount_in_cents;
+
     directNetResult = directGrossResult * directCommission
 
     let resultArray = [directGrossResult, directNetResult]
@@ -284,6 +261,19 @@ export class RevenueController {
         authorize: 0,
         total: 0
       },
+      newRev: {
+        name: "New Revenue",
+        chargify: 0,
+        authorize: 0,
+        total: 0
+      },
+      saasRev: {
+        name: "SaaS Revenue",
+        chargify: 0,
+        authorize: 0,
+        total: 0
+      },
+
     }
     let txnsInRange = await this.find(
       {
@@ -303,9 +293,16 @@ export class RevenueController {
         ? txn.amount_in_cents / 100
         : -(txn.amount_in_cents) / 100
       let productType = this.productService.getProductType(product_id, memo, kind, txn.amount_in_cents)
-
+      let revenueType = this.productService.getRevenueType(productType)
       revenueReport.totalGross.total += amount
       revenueReport.totalNet.total += amount
+
+      if (revenueType == 'saasRevenue') {
+        revenueReport.saasRev.total += amount
+      } else {
+        revenueReport.newRev.total += amount
+      }
+
       if (txn.source == 'chargify') {
         revenueReport.totalGross.chargify += amount
         revenueReport.totalNet.chargify += amount
