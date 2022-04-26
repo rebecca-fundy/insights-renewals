@@ -21,6 +21,7 @@ import {EventController} from './event.controller';
 let isLive = process.env.CHARGIFY_ENV == "live";
 const leaseProductIds = [5874830, 5601362, 5135042, 5081978]
 const peCost = 179;
+const reOptInCostInCents = 9900
 
 export class WebhookController {
   constructor(
@@ -136,9 +137,6 @@ export class WebhookController {
     let subscription_id = payload["subscription_id"]
     let amount_in_cents = payload["payment_amount_in_cents"]
 
-    // let product_id = subdomain == "fundy"
-    // ? 27089 //One of the Old Proofer product_ids, because we don't store subscription information on Old Proofer
-    // : (await this.subscriptionRepository.findById(subscription_id)).product_id
     let product_id: number = 0;
     //refund_success webhook does not have a product payload so we must figure out the product by querying the subscription db
     if (subdomain == "fundy") {
@@ -153,7 +151,7 @@ export class WebhookController {
 
     //refund_success webhook does not have a transaction payload, so this id is the webhook id, not the transaction id.
     let id = parseInt(refundEvent.id, 10);
-    if (amount_in_cents == 9900) {
+    if (amount_in_cents == reOptInCostInCents) {
       kind = "component_proration"
     }
 
