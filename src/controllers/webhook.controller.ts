@@ -128,7 +128,6 @@ export class WebhookController {
     }
   }
 
-  //TODO: implement subdomains for sandbox to enable testing.
   async logRefund(refundEvent: any): Promise<Partial<Transaction>> {
     let payload = refundEvent.payload;
 
@@ -137,10 +136,19 @@ export class WebhookController {
     let subscription_id = payload["subscription_id"]
     let amount_in_cents = payload["payment_amount_in_cents"]
 
+    // let product_id = subdomain == "fundy"
+    // ? 27089 //One of the Old Proofer product_ids, because we don't store subscription information on Old Proofer
+    // : (await this.subscriptionRepository.findById(subscription_id)).product_id
+    let product_id: number = 0;
     //refund_success webhook does not have a product payload so we must figure out the product by querying the subscription db
-    let product_id = subdomain == "fundy"
-      ? 27089 //One of the Old Proofer product_ids, because we don't store subscription information on Old Proofer
-      : (await this.subscriptionRepository.findById(subscription_id)).product_id
+    if (subdomain == "fundy") {
+      product_id = 27089 //One of the Old Proofer product_ids, because we don't store subscription information on Old Proofer
+    } else if (subdomain == "fundy-suite") {
+      product_id = (await this.subscriptionRepository.findById(subscription_id)).product_id
+    } else {
+      product_id = (await this.subscriptionSandboxRepository.findById(subscription_id)).product_id
+    }
+
     let kind
 
     //refund_success webhook does not have a transaction payload, so this id is the webhook id, not the transaction id.
@@ -403,15 +411,10 @@ export class WebhookController {
     })
     chargifyEvent: any,
   ): Promise<Partial<EventDb> | Partial<Subscription>> {
-    // let payload = chargifyEvent.payload;
-    // let id = chargifyEvent.id;
-    // let eventId = payload["event_id"]
+
     let webhookDate = new Date();
     let event = chargifyEvent.event.trim()
-    // let subdomain = payload["site"]["subdomain"].trim();
-    // console.log('event ', event)
-    // console.log('subdomain ' + subdomain)
-    // console.log(event == "signup_success")
+
     let result: Partial<EventDb> | Partial<Subscription> | Partial<Transaction> = {}
 
     if (event == "subscription_card_update") {
