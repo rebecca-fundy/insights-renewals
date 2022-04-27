@@ -19,9 +19,10 @@ import {EventController} from './event.controller';
 
 
 let isLive = process.env.CHARGIFY_ENV == "live";
-const leaseProductIds = [5874830, 5601362, 5135042, 5081978]
+// const leaseProductIds = [5874830, 5601362, 5135042, 5081978]
 const peCost = 179;
 const reOptInCostInCents = 9900
+const newReOptInCostInCents = 12900
 
 export class WebhookController {
   constructor(
@@ -55,9 +56,9 @@ export class WebhookController {
     public customerEventController: CustomerEventController,
   ) { }
 
-  isLeaseProduct(product_id: number): boolean {
-    return leaseProductIds.includes(product_id);
-  }
+  // isLeaseProduct(product_id: number): boolean {
+  //   return leaseProductIds.includes(product_id);
+  // }
 
   async isRefreshTime(webhookDate: Date): Promise<boolean> {
     let isNextDay = false
@@ -132,12 +133,12 @@ export class WebhookController {
   async logRefund(refundEvent: any): Promise<Partial<Transaction>> {
     let payload = refundEvent.payload;
 
-    //Proofer Chargify site has subdomain "fundy, so any hooks from there apply to old proofer.
     let subdomain = payload["site"]["subdomain"].trim();
     let subscription_id = payload["subscription_id"]
     let amount_in_cents = payload["payment_amount_in_cents"]
 
     let product_id: number = 0;
+    //Proofer Chargify site has subdomain "fundy, so any hooks from there apply to old proofer.
     //refund_success webhook does not have a product payload so we must figure out the product by querying the subscription db
     if (subdomain == "fundy") {
       product_id = 27089 //One of the Old Proofer product_ids, because we don't store subscription information on Old Proofer
@@ -151,7 +152,7 @@ export class WebhookController {
 
     //refund_success webhook does not have a transaction payload, so this id is the webhook id, not the transaction id.
     let id = parseInt(refundEvent.id, 10);
-    if (amount_in_cents == reOptInCostInCents) {
+    if (amount_in_cents == reOptInCostInCents || amount_in_cents == newReOptInCostInCents) {
       kind = "component_proration"
     }
 
@@ -217,9 +218,10 @@ export class WebhookController {
     let previous_subscription_state = subscription["previous_state"].trim()
     let new_subscription_state = subscription["state"].trim()
     let product_id = parseInt(subscription["product"]["id"], 10)
+    let productType = this.productTypeService.getProductType(product_id)
     let est_renew_amt = parseInt(subscription["product"]["price_in_cents"], 10) / 100
 
-    if (!this.isLeaseProduct(product_id) && !(new_subscription_state == "canceled")) {
+    if (!this.productTypeService.isLeaseProduct(productType) && !(new_subscription_state == "canceled")) {
       est_renew_amt = peCost
     }
 
@@ -271,6 +273,7 @@ export class WebhookController {
     let allocation_id = parseInt(payload["allocation"]["id"], 10)
     let subdomain = payload["site"]["subdomain"].trim();
     let product_id = parseInt(payload["product"]["id"], 10)
+    let productType = this.productTypeService.getProductType(product_id)
 
     customer_id = isLive ?
       (await this.subscriptionRepository.customerId(subscription_id)).id
@@ -291,7 +294,7 @@ export class WebhookController {
       peOn: new_allocation == 0 ? false : true
     }
 
-    if (!this.isLeaseProduct(product_id)) {
+    if (!this.productTypeService.isLeaseProduct(productType)) {
       togglePeData.est_renew_amt = new_allocation == 0 ? 0 : peCost
     }
 
@@ -322,6 +325,7 @@ export class WebhookController {
     let customer_id = parseInt(subscription["customer"]["id"], 10);
     let state = subscription["state"].trim()
     let product_id = parseInt(subscription["product"]["id"], 10)
+    let productType = this.productTypeService.getProductType(product_id)
     let eventCreationDate = new Date(subscription["updated_at"].trim())
     let next_assessment_at = new Date(subscription["next_assessment_at"].trim())
     let payment_type = subscription["payment_type"].trim()
@@ -346,7 +350,7 @@ export class WebhookController {
       cc_exp_year: cc_exp_year
     }
 
-    if (!leaseProductIds.includes(product_id)) {
+    if (!this.productTypeService.isLeaseProduct(productType)) {
       console.log(`${product_id} is not a lease product`);
       newSubscriptionData.peOn = await this.eventService.listComponents(subscription_id)
         .then(components => {

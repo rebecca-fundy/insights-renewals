@@ -348,10 +348,15 @@ export class CustomerEventController {
   async find(
     @param.filter(CustomerEvent) filter?: Filter<CustomerEvent>,
   ): Promise<CustomerEvent[]> {
-    // const tableJoinQuery = "select Customer.id id, Customer.created_at created_at, Subscription.id subscription_id, Subscription.peOn peOn, EventDb.created_at event_date, EventDb.previous_allocation previous_allocation, EventDb.new_allocation new_allocation, EventDb.previous_subscription_state previous_subscription_state, EventDb.new_subscription_state new_subscription_state from Customer inner join Subscription on Customer.id = Subscription.customer_id inner join EventDb on EventDb.customer_id = Customer.id"
-    // let result = await this.customerEventRepository.execute(tableJoinQuery);
-    // console.log('result')
-    // console.log(result);
+    const tableJoinQuery = "select Customer.id id, Customer.created_at created_at, Subscription.id subscription_id, Subscription.peOn peOn, EventDb.created_at event_date, EventDb.previous_allocation previous_allocation, EventDb.new_allocation new_allocation, EventDb.previous_subscription_state previous_subscription_state, EventDb.new_subscription_state new_subscription_state from Customer inner join Subscription on Customer.id = Subscription.customer_id inner join EventDb on EventDb.customer_id = Customer.id order by 3 asc, 6 asc"
+    let results = await this.customerEventRepository.execute(tableJoinQuery);
+    for (let i = 0; i < results.length; i++) {
+      if (results[i].id == 16558564) {
+        console.log(results[i])
+      }
+    }
+    // console.log('results')
+    // console.log(results);
     // console.log('debug before generate table')
     let customerEventCount = isLive ? (await this.customerEventRepository.count()).count : (await this.customerEventSandboxRepository.count()).count;
     if (customerEventCount == 0) {
