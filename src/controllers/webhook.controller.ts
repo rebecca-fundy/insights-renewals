@@ -13,7 +13,7 @@ import {
 } from '@loopback/rest';
 import {ChargifyEvent, Customer, EventDb, Subscription, Transaction} from '../models';
 import {ChargifyEventRepository, CustomerRepository, CustomerSandboxRepository, EventDbRepository, EventDbSandboxRepository, RefreshRepository, SubscriptionRepository, SubscriptionSandboxRepository, TransactionRepository, TransactionSandboxRepository} from '../repositories';
-import {Event, ProductTypeService} from '../services';
+import {Event, ProductTypeService, RenewalPreview} from '../services';
 import {CustomerEventController} from './customer-event.controller';
 import {EventController} from './event.controller';
 
@@ -23,6 +23,7 @@ let isLive = process.env.CHARGIFY_ENV == "live";
 const peCost = 179;
 const reOptInCostInCents = 9900
 const newReOptInCostInCents = 12900
+let inactiveStates = ["canceled", "unpaid", "past_due"]
 
 export class WebhookController {
   constructor(
@@ -82,11 +83,19 @@ export class WebhookController {
     let subscription = payload["subscription"]
     let subscription_id = parseInt(subscription["id"], 10);
     let est_renew_amt = parseInt(subscription["product"]["price_in_cents"], 10) / 100
+    let product_id = parseInt(subscription["product"]["id"], 10)
+    let productType = this.productTypeService.getProductType(product_id);
+    let isLeaseProduct = this.productTypeService.isLeaseProduct(productType)
+
+    if (!isLeaseProduct) {
+      est_renew_amt = ((await this.eventService.renewalPreview(subscription_id)).renewal_preview.total_amount_due_in_cents) / 100
+    }
 
     let renewalData: Partial<Subscription> = {
       est_renew_amt: est_renew_amt,
       next_assessment_at: subscription["next_assessment_at"],
     }
+
     try {
       subdomain == "fundy-suite"
         ? await this.subscriptionRepository.updateById(subscription_id, renewalData)
@@ -220,14 +229,24 @@ export class WebhookController {
     let product_id = parseInt(subscription["product"]["id"], 10)
     let productType = this.productTypeService.getProductType(product_id)
     let est_renew_amt = parseInt(subscription["product"]["price_in_cents"], 10) / 100
+    let next_assessment_at = new Date(subscription["current_period_ends_at"].trim())
+    let balance = parseInt(subscription["balance_in_cents"], 10) / 100
+    console.log("balance " + balance);
 
-    if (!this.productTypeService.isLeaseProduct(productType) && !(new_subscription_state == "canceled")) {
-      est_renew_amt = peCost
+    // if (!this.productTypeService.isLeaseProduct(productType) && !inactiveStates.includes(new_subscription_state)) {
+    // if (!this.productTypeService.isLeaseProduct(productType) && !(new_subscription_state == "canceled")) {
+    // est_renew_amt = peCost
+    // }
+
+    if (previous_subscription_state == "trialing" && new_subscription_state == "active") {
+      let renewalPreview: RenewalPreview = await this.eventService.renewalPreview(subscription_id);
+      est_renew_amt = renewalPreview.renewal_preview.total_amount_due_in_cents / 100
     }
 
     let subscriptionStateChangeData: Partial<Subscription> = {
       state: new_subscription_state,
-      est_renew_amt: est_renew_amt
+      est_renew_amt,
+      next_assessment_at
     }
 
     try {
@@ -294,9 +313,9 @@ export class WebhookController {
       peOn: new_allocation == 0 ? false : true
     }
 
-    if (!this.productTypeService.isLeaseProduct(productType)) {
-      togglePeData.est_renew_amt = new_allocation == 0 ? 0 : peCost
-    }
+    // if (!this.productTypeService.isLeaseProduct(productType)) {
+    //   togglePeData.est_renew_amt = new_allocation == 0 ? 0 : peCost
+    // }
 
     try {
       subdomain == "fundy-suite"
@@ -335,7 +354,9 @@ export class WebhookController {
     let cc_exp_month = payment_type == "paypal_account"
       ? 0
       : parseInt(subscription["credit_card"]["expiration_month"], 10)
-    let est_renew_amt = parseInt(subscription["product_price_in_cents"], 10) / 100
+    let est_renew_amt = this.productTypeService.isLeaseProduct(productType)
+      ? parseInt(subscription["product_price_in_cents"], 10) / 100
+      : peCost
 
     let newSubscriptionData: Partial<Subscription> = {
       id: subscription_id,
@@ -352,13 +373,16 @@ export class WebhookController {
 
     if (!this.productTypeService.isLeaseProduct(productType)) {
       console.log(`${product_id} is not a lease product`);
-      newSubscriptionData.peOn = await this.eventService.listComponents(subscription_id)
-        .then(components => {
-          let peComponent = components.filter(component => component.component.name.includes("Fundy Pro Enhancements")); console.log(`peComponent.length: ${peComponent.length}`);
-          return peComponent
-        })
-        .then(pEcomponent => pEcomponent[0].component.enabled)
-      est_renew_amt = newSubscriptionData.peOn ? peCost : 0
+      try {
+        newSubscriptionData.peOn = await this.eventService.listComponents(subscription_id)
+          .then(components => {
+            let peComponent = components.filter(component => component.component.name.includes("Fundy Pro Enhancements")); console.log(`peComponent.length: ${peComponent.length}`);
+            return peComponent
+          })
+          .then(pEcomponent => pEcomponent[0].component.enabled)
+      } catch (error) {
+        console.log(error)
+      }
     }
 
     let customerData: Partial<Customer> = {
