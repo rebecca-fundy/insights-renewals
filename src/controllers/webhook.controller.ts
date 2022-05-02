@@ -236,7 +236,6 @@ export class WebhookController {
     let product_id = parseInt(subscription["product"]["id"], 10)
     let productType = this.productTypeService.getProductType(product_id)
     let est_renew_amt = parseInt(subscription["product"]["price_in_cents"], 10) / 100
-<<<<<<< HEAD
     let cc_info = subscription["credit_card"]
     let card_type = cc_info["card_type"];
     let expiration_month = card_type == "paypal"
@@ -248,7 +247,6 @@ export class WebhookController {
 
     const mailchimp_response = await mailchimp.ping.get();
     console.log(mailchimp_response)
-=======
     let next_assessment_at = new Date(subscription["current_period_ends_at"].trim())
     let balance = parseInt(subscription["balance_in_cents"], 10) / 100
     console.log("balance " + balance);
@@ -257,7 +255,6 @@ export class WebhookController {
     // if (!this.productTypeService.isLeaseProduct(productType) && !(new_subscription_state == "canceled")) {
     // est_renew_amt = peCost
     // }
->>>>>>> sandboxTesting
 
     if (previous_subscription_state == "trialing" && new_subscription_state == "active") {
       let renewalPreview: RenewalPreview = await this.eventService.renewalPreview(subscription_id);
