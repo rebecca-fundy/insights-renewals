@@ -10,39 +10,29 @@ import {
   getModelSchemaRef, param, post, requestBody,
   response
 } from '@loopback/rest';
-import {Customer, CustomerEvent, CustomerRelations, EventDb, Subscription, SubscriptionRelations} from '../models';
+import {Customer, CustomerEvent, CustomerRelations, EventDb} from '../models';
 import {CustomerEventRepository, CustomerEventSandboxRepository, CustomerRepository, CustomerSandboxRepository, DropoffRow, DropoffTable, EventDbRepository, EventDbSandboxRepository, RefreshRepository, SubscriptionRepository, SubscriptionSandboxRepository} from '../repositories';
+import {DateService, ProductTypeService} from '../services';
 import {EventController} from './event.controller';
 
 let isLive: boolean = process.env.CHARGIFY_ENV == "live";
 
-function addMonths(date: Date, months: number, i?: number): Date {
-  let date2 = new Date(date) //Prevent overwrite of date parameter
-  let d = date2.getDate();
-  date2.setMonth(date2.getMonth() + +months); //gets month from parameter, adds months param, then calls setMonth
-  //if the day of the month is not equal to the original after adding the month then reset the day of the month to the last day of the previous month.
-  if (date2.getDate() != d) {
-    date2.setDate(0);
-  }
-  return date2;
-}
-
-function setProductType(products: (Subscription & SubscriptionRelations)[] | undefined): string {
-  const monthLeaseProductId = process.env.CHARGIFY_ENV == "live" ? 5874830 : 5601362;
-  const yearLeaseProductId = process.env.CHARGIFY_ENV == "live" ? 5135042 : 5081978;
-  let productType = ""
-  if (products == undefined) {return ""};
-  if (products.length != 0 && products[products.length - 1].product_id == monthLeaseProductId) {
-    productType = "month lease"
-  } else if (products.length != 0 && products[products.length - 1].product_id == yearLeaseProductId) {
-    productType = "year lease"
-  } else if (products.length != 0) {
-    productType = "non-lease"
-  } else {
-    productType = ""
-  }
-  return productType;
-}
+// function setProductType(products: (Subscription & SubscriptionRelations)[] | undefined): string {
+//   const monthLeaseProductId = process.env.CHARGIFY_ENV == "live" ? 5874830 : 5601362;
+//   const yearLeaseProductId = process.env.CHARGIFY_ENV == "live" ? 5135042 : 5081978;
+//   let productType = ""
+//   if (products == undefined) {return ""};
+//   if (products.length != 0 && products[products.length - 1].product_id == monthLeaseProductId) {
+//     productType = "month lease"
+//   } else if (products.length != 0 && products[products.length - 1].product_id == yearLeaseProductId) {
+//     productType = "year lease"
+//   } else if (products.length != 0) {
+//     productType = "non-lease"
+//   } else {
+//     productType = ""
+//   }
+//   return productType;
+// }
 
 type TimeKey = "peOffAtSignup" | "peOffAt3" | "peOffAt15" | "peOffAt27" | "peOffAt39"
 type TimeKeyYearly = "peOffAt15" | "peOffAt27" | "peOffAt39"
@@ -76,11 +66,12 @@ export class CustomerEventController {
     public eventDbSandboxRepository: EventDbSandboxRepository,
     @repository(RefreshRepository)
     public refreshRepository: RefreshRepository,
-    // @inject(EventController)
     @inject('controllers.EventController')
     public eventController: EventController,
-    // @inject(RestBindings.Http.RESPONSE)
-    // private response: Response
+    @inject('services.ProductTypeService')
+    public productTypeService: ProductTypeService,
+    @inject('services.DateService')
+    public dateService: DateService,
   ) {
   }
 
@@ -129,13 +120,15 @@ export class CustomerEventController {
       if (customer.subscriptions == undefined || customer.subscriptions.length == 0) {continue}
       else {
         let subscriptionList = customer.subscriptions
+        //Determine whether this customer's most recent subscription is active, trialing or neither
+        let currentSubscription = subscriptionList[subscriptionList.length - 1]
         let events = customer.eventDbs
         // if (customer.id == customerOfInterest) {console.log('numEvents ' + events.length)}
         const custCreationDate = new Date(subscriptionList[0].created_at); //Set the customer creation date to the creation date of the first subscription. This will be the date that all the timepoints will be measured from. (If no subscriptions, it will be the customer creation date.)
-        let productType = setProductType(subscriptionList)//Set product type for this customer.
-
-        //Determine whether this customer's most recent subscription is active, trialing or neither
-        let currentSubscription = subscriptionList[subscriptionList.length - 1]
+        let productType = this.productTypeService.getProductType(currentSubscription.product_id)//Set product type for this customer.
+        if (!this.productTypeService.isLeaseProduct(productType)) {
+          productType = "non-lease"
+        }
 
         //For non-lease customers, "active" or "trialing" means most recent subscription is in an active/trialing state *and* PE is turned on.
         let isActive = currentSubscription.state == "active" && currentSubscription.peOn
@@ -143,7 +136,7 @@ export class CustomerEventController {
         // if (customer.id == customerOfInterest) {console.log("isActive: " + isActive)}
         //For lease customers, "active" means the current subscription is in an active state.
         //There is no trial period for lease customers.
-        if (productType == "year lease" || productType == "month lease") {
+        if (productType == "yearLease" || productType == "monthLease") {
           isActive = currentSubscription.state == "active";
           isTrialing = undefined
         }
@@ -151,15 +144,15 @@ export class CustomerEventController {
         let signupDate = new Date(custCreationDate);
         let signup = new Date(signupDate.setDate(signupDate.getDate() + 1));
         let signupPlus3wks = new Date(signupDate.setDate(signupDate.getDate() + 20)); //Already added one day for signup
-        let oneMonth = addMonths(signupPlus3wks, 1)
-        let twoMonths = addMonths(signupPlus3wks, 2)
-        let threeMonths = addMonths(signupPlus3wks, 3)
-        let fourMonths = addMonths(signupPlus3wks, 4)
-        let fiveMonths = addMonths(signupPlus3wks, 5)
-        let sixMonths = addMonths(signupPlus3wks, 6)
-        let oneYear = addMonths(signupPlus3wks, 15)
-        let twoYears = addMonths(signupPlus3wks, 27)
-        let threeYears = addMonths(signupPlus3wks, 39)
+        let oneMonth = this.dateService.addMonths(signupPlus3wks, 1)
+        let twoMonths = this.dateService.addMonths(signupPlus3wks, 2)
+        let threeMonths = this.dateService.addMonths(signupPlus3wks, 3)
+        let fourMonths = this.dateService.addMonths(signupPlus3wks, 4)
+        let fiveMonths = this.dateService.addMonths(signupPlus3wks, 5)
+        let sixMonths = this.dateService.addMonths(signupPlus3wks, 6)
+        let oneYear = this.dateService.addMonths(signupPlus3wks, 15)
+        let twoYears = this.dateService.addMonths(signupPlus3wks, 27)
+        let threeYears = this.dateService.addMonths(signupPlus3wks, 39)
         // if (customer.id == customerOfInterest) {
         //   console.log('timepoints')
         //   console.log('signupDate ' + signupDate)
@@ -183,7 +176,7 @@ export class CustomerEventController {
         let timepointsMonthly: Date[] = [signup, oneMonth, twoMonths, threeMonths, fourMonths, fiveMonths, sixMonths, oneYear, twoYears, threeYears];
 
         function getTimepointKey(timePoint: string): TimeKey | TimeKeyMonthly {
-          return productType == "month lease" ? timepointKeysMonthly[timepointStrsMonthly.indexOf(timePoint)] : timepointKeys[timepointStrs.indexOf(timePoint)]
+          return productType == "monthLease" ? timepointKeysMonthly[timepointStrsMonthly.indexOf(timePoint)] : timepointKeys[timepointStrs.indexOf(timePoint)]
         }
         function setTimepoint(event: EventDb, timePoint: string): void {
 
@@ -225,12 +218,12 @@ export class CustomerEventController {
           if (data.productType != "non-lease") { //Lease products are turned on at signup by definition, so they will never be off at signup
             data.peOffAtSignup = false
             //For the year lease, initialize to an entire year on.
-            if (data.productType == "year lease") {
+            if (data.productType == "yearLease") {
               data.peOffAt3 = false;
               data.peOffAt15 = false;
             }
             //For the month lease, initialize to one month on.
-            if (data.productType == "month lease") {
+            if (data.productType == "monthLease") {
               data.peOffAt1 = false;
             }
           } else if (!allocationEvents) { //No allocation events for this customer in their first subscription means signup allocation same as final allocation in first subscription
@@ -247,9 +240,9 @@ export class CustomerEventController {
         let peStatus = data.peOffAtSignup ? "off" : "on";
         // if (customer.id == customerOfInterest) {console.log("peStatus: " + peStatus)}
         //Initialize other valid (relative to time elapsed since first signup) timepoints
-        let timepoints = productType == "month lease" ? timepointsMonthly : timepointsNonLease
+        let timepoints = productType == "monthLease" ? timepointsMonthly : timepointsNonLease
         for (let i = 1; i < timepoints.length; i++) { //Start at three months (index = 1 instead of 0) because we've already initialized signup timepoint.
-          let timepointStr = productType == "month lease" ? timepointStrsMonthly[i] : timepointStrs[i];
+          let timepointStr = productType == "monthLease" ? timepointStrsMonthly[i] : timepointStrs[i];
           let timeKey = getTimepointKey(timepointStr);
           if (today > timepoints[i] && data[timeKey] === undefined) {
             data[timeKey] = false
@@ -286,22 +279,22 @@ export class CustomerEventController {
             if (event.created_at <= signup && productType == "non-lease") {
               setTimepoint(event, 'signup')
             }
-            else if (event.created_at <= oneMonth && productType == "month lease") {
+            else if (event.created_at <= oneMonth && productType == "monthLease") {
               setTimepoint(event, 'oneMonth');
             }
-            else if (event.created_at <= twoMonths && productType == "month lease") {
+            else if (event.created_at <= twoMonths && productType == "monthLease") {
               setTimepoint(event, 'twoMonths')
             }
-            else if (event.created_at <= threeMonths && (productType == "non-lease" || productType == "month lease")) {
+            else if (event.created_at <= threeMonths && (productType == "non-lease" || productType == "monthLease")) {
               setTimepoint(event, 'threeMonths')
             }
-            else if (event.created_at <= fourMonths && productType == "month lease") {
+            else if (event.created_at <= fourMonths && productType == "monthLease") {
               setTimepoint(event, 'fourMonths')
             }
-            else if (event.created_at <= fiveMonths && productType == "month lease") {
+            else if (event.created_at <= fiveMonths && productType == "monthLease") {
               setTimepoint(event, 'fiveMonths')
             }
-            else if (event.created_at <= sixMonths && productType == "month lease") {
+            else if (event.created_at <= sixMonths && productType == "monthLease") {
               setTimepoint(event, 'sixMonths')
             }
             else if (event.created_at <= oneYear) {
@@ -355,10 +348,15 @@ export class CustomerEventController {
   async find(
     @param.filter(CustomerEvent) filter?: Filter<CustomerEvent>,
   ): Promise<CustomerEvent[]> {
-    // const tableJoinQuery = "select Customer.id id, Customer.created_at created_at, Subscription.id subscription_id, Subscription.peOn peOn, EventDb.created_at event_date, EventDb.previous_allocation previous_allocation, EventDb.new_allocation new_allocation, EventDb.previous_subscription_state previous_subscription_state, EventDb.new_subscription_state new_subscription_state from Customer inner join Subscription on Customer.id = Subscription.customer_id inner join EventDb on EventDb.customer_id = Customer.id"
-    // let result = await this.customerEventRepository.execute(tableJoinQuery);
-    // console.log('result')
-    // console.log(result);
+    // const tableJoinQuery = "select Customer.id id, Customer.created_at created_at, Subscription.id subscription_id, Subscription.peOn peOn, EventDb.created_at event_date, EventDb.previous_allocation previous_allocation, EventDb.new_allocation new_allocation, EventDb.previous_subscription_state previous_subscription_state, EventDb.new_subscription_state new_subscription_state from Customer inner join Subscription on Customer.id = Subscription.customer_id inner join EventDb on EventDb.customer_id = Customer.id order by 3 asc, 6 asc"
+    // let results = await this.customerEventRepository.execute(tableJoinQuery);
+    // for (let i = 0; i < results.length; i++) {
+    //   if (results[i].id == 16558564) {
+    //     console.log(results[i])
+    //   }
+    // }
+    // console.log('results')
+    // console.log(results);
     // console.log('debug before generate table')
     let customerEventCount = isLive ? (await this.customerEventRepository.count()).count : (await this.customerEventSandboxRepository.count()).count;
     if (customerEventCount == 0) {
@@ -376,11 +374,11 @@ export class CustomerEventController {
 
     let name = "";
     let rowKey: TimeKey | TimeKeyMonthly | TimeKeyYearly;
-    if (productType == "non lease") {console.log(rowType)}
-    if (productType == "month lease") {
+    if (productType == "non-lease") {console.log(rowType)}
+    if (productType == "monthLease") {
       name = monthlyTimepointNames[timepointStrsMonthly.indexOf(rowType)]
       rowKey = timepointKeysMonthly[timepointStrsMonthly.indexOf(rowType)];
-    } else if (productType == "year lease") {
+    } else if (productType == "yearLease") {
       name = yearlyTimepointNames[timepointStrsYearly.indexOf(rowType)]
       rowKey = timepointKeysYearly[timepointStrsYearly.indexOf(rowType)];
     } else {
@@ -422,7 +420,7 @@ export class CustomerEventController {
     let monthlyDropoffs: DropoffTable = {
       title: "Month Lease",
     }
-    const productType = "month lease"
+    const productType = "monthLease"
     monthlyDropoffs.totalCusts = this.generateSubscriptionCountRow('total', monthlyCust)
     monthlyDropoffs.numActive = this.generateSubscriptionCountRow('active', monthlyCust)
     monthlyDropoffs.dropoff1m = this.generateDropoffRow('oneMonth', productType, monthlyCust)
@@ -442,7 +440,7 @@ export class CustomerEventController {
     let yearlyDropoffs: DropoffTable = {
       title: "Year Lease"
     }
-    const productType = "year lease"
+    const productType = "yearLease"
     yearlyDropoffs.totalCusts = this.generateSubscriptionCountRow('total', yearlyCust)
     yearlyDropoffs.numActive = this.generateSubscriptionCountRow('active', yearlyCust)
     yearlyDropoffs.dropoff1y = this.generateDropoffRow('oneYear', productType, yearlyCust)
@@ -456,7 +454,7 @@ export class CustomerEventController {
     let peDropoffs: DropoffTable = {
       title: "Pro Enhancements"
     }
-    const productType = "non lease"
+    const productType = "non-lease"
     peDropoffs.totalCusts = this.generateSubscriptionCountRow('total', peCust)
     peDropoffs.numActive = this.generateSubscriptionCountRow('active', peCust)
     peDropoffs.numTrialing = this.generateSubscriptionCountRow('trialing', peCust)
@@ -485,7 +483,7 @@ export class CustomerEventController {
     @param.filter(CustomerEvent) filter?: Filter<CustomerEvent>,
   ): Promise<DropoffTable[] | Date[]> {
     let dropoffArray: DropoffTable[] | Date[] = []
-    const productTypes = ["non-lease", "year lease", "month lease"];
+    const productTypes = ["non-lease", "yearLease", "monthLease"];
 
     for (let i = 0; i < productTypes.length; i++) {
       let productType: string = productTypes[i]
@@ -499,11 +497,11 @@ export class CustomerEventController {
         dropoffArray[i] = this.generateProDropoffTable(totalCust)
       }
 
-      if (productType == "year lease") {
+      if (productType == "yearLease") {
         dropoffArray[i] = this.generateYearlyDropoffTable(totalCust)
       }
 
-      if (productType == "month lease") {
+      if (productType == "monthLease") {
         dropoffArray[i] = this.generateMonthlyDropoffTable(totalCust)
       }
     }

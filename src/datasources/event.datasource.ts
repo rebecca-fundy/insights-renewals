@@ -47,6 +47,16 @@ const config = {
         listComponents: ['subId'],
       }
     },
+    {
+      template: {
+        method: 'POST',
+        url: `https://${url}/subscriptions/{subId}/renewals/preview.json`,
+      },
+      functions:
+      {
+        renewalPreview: ['subId'],
+      }
+    },
 
   ],
 };

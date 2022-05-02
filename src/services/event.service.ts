@@ -62,6 +62,46 @@ export interface ComponentInfo {
   }
 }
 
+export interface RenewalPreview {
+  renewal_preview: {
+    next_assessment_at: Date,
+    subtotal_in_cents: number,
+    total_tax_in_cents: number,
+    total_discount_in_cents: number,
+    total_in_cents: number,
+    existing_balance_in_cents: number,
+    total_amount_due_in_cents: number,
+    line_items: [
+      {
+        transaction_type: string,
+        kind: string,
+        amount_in_cents: number,
+        memo: string,
+        discount_amount_in_cents: number,
+        taxable_amount_in_cents: number,
+        period_range_start: Date,
+        period_range_end: Date,
+        product_id: number,
+        product_handle: string,
+        product_name: string
+      },
+      {
+        transaction_type: string,
+        kind: string,
+        amount_in_cents: number,
+        memo: string,
+        discount_amount_in_cents: number,
+        taxable_amount_in_cents: number,
+        period_range_start: Date,
+        period_range_end: Date,
+        component_id: number,
+        component_name: string
+      }
+    ],
+    uncalculated_taxes: false
+  }
+}
+
 
 export interface Event {
   // this is where you define the Node.js methods that will be
@@ -70,6 +110,7 @@ export interface Event {
   getEvents(page: number, since_id: number): Promise<EventObject[]>,
   getAllocations(subId: number, compId: number): Promise<AllocationObject[]>
   listComponents(subId: number): Promise<ComponentInfo[]>
+  renewalPreview(subId: number): Promise<RenewalPreview>
 }
 
 export class EventProvider implements Provider<Event> {
