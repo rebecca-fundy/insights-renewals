@@ -23,6 +23,7 @@ let isLive = process.env.CHARGIFY_ENV == "live";
 const leaseProductIds = [5874830, 5601362, 5135042, 5081978]
 const peCost = 179;
 
+
 mailchimp.setConfig({
   apiKey: process.env.FUNDYDESIGNER_MAILCHIMP_APIKEY,
   server: "us-14"
