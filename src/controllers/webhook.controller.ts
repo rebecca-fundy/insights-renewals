@@ -11,6 +11,7 @@ import {
   del, get,
   getModelSchemaRef, param, patch, post, put, requestBody, response
 } from '@loopback/rest';
+import mailchimp from '@mailchimp/mailchimp_marketing';
 import {ChargifyEvent, Customer, EventDb, Subscription, Transaction} from '../models';
 import {ChargifyEventRepository, CustomerRepository, CustomerSandboxRepository, EventDbRepository, EventDbSandboxRepository, RefreshRepository, SubscriptionRepository, SubscriptionSandboxRepository, TransactionRepository, TransactionSandboxRepository} from '../repositories';
 import {Event, ProductTypeService} from '../services';
@@ -21,6 +22,11 @@ import {EventController} from './event.controller';
 let isLive = process.env.CHARGIFY_ENV == "live";
 const leaseProductIds = [5874830, 5601362, 5135042, 5081978]
 const peCost = 179;
+
+mailchimp.setConfig({
+  apiKey: process.env.FUNDYDESIGNER_MAILCHIMP_APIKEY,
+  server: "us-14"
+})
 
 export class WebhookController {
   constructor(
@@ -212,6 +218,17 @@ export class WebhookController {
     let new_subscription_state = subscription["state"].trim()
     let product_id = parseInt(subscription["product"]["id"], 10)
     let est_renew_amt = parseInt(subscription["product"]["price_in_cents"], 10) / 100
+    let cc_info = subscription["credit_card"]
+    let card_type = cc_info["card_type"];
+    let expiration_month = card_type == "paypal"
+      ? 0
+      : cc_info["expiration_month"]
+    let expiration_year = card_type == "paypal"
+      ? 0
+      : cc_info["expiration_year"]
+
+    const mailchimp_response = await mailchimp.ping.get();
+    console.log(mailchimp_response)
 
     if (!this.isLeaseProduct(product_id) && !(new_subscription_state == "canceled")) {
       est_renew_amt = peCost
