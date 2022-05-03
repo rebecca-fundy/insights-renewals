@@ -97,7 +97,13 @@ export class WebhookController {
     let isLeaseProduct = this.productTypeService.isLeaseProduct(productType)
 
     if (!isLeaseProduct) {
-      est_renew_amt = ((await this.eventService.renewalPreview(subscription_id)).renewal_preview.total_amount_due_in_cents) / 100
+      try {
+        let renewalPreview: RenewalPreview = await this.eventService.renewalPreview(subscription_id);
+        est_renew_amt = renewalPreview.renewal_preview.total_amount_due_in_cents / 100
+      } catch (error) {
+        est_renew_amt = peCost
+        console.log(error);
+      }
     }
 
     let renewalData: Partial<Subscription> = {
@@ -300,14 +306,15 @@ export class WebhookController {
     let balance = parseInt(subscription["balance_in_cents"], 10) / 100
     console.log("balance " + balance);
 
-    // if (!this.productTypeService.isLeaseProduct(productType) && !inactiveStates.includes(new_subscription_state)) {
-    // if (!this.productTypeService.isLeaseProduct(productType) && !(new_subscription_state == "canceled")) {
-    // est_renew_amt = peCost
-    // }
 
     if (previous_subscription_state == "trialing" && new_subscription_state == "active") {
-      let renewalPreview: RenewalPreview = await this.eventService.renewalPreview(subscription_id);
-      est_renew_amt = renewalPreview.renewal_preview.total_amount_due_in_cents / 100
+      try {
+        let renewalPreview: RenewalPreview = await this.eventService.renewalPreview(subscription_id);
+        est_renew_amt = renewalPreview.renewal_preview.total_amount_due_in_cents / 100
+      } catch (error) {
+        est_renew_amt = peCost
+        console.log(error);
+      }
     }
 
     let subscriptionStateChangeData: Partial<Subscription> = {
