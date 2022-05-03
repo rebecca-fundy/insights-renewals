@@ -24,12 +24,14 @@ let isLive = process.env.CHARGIFY_ENV == "live";
 const peCost = 179;
 const reOptInCostInCents = 9900
 const newReOptInCostInCents = 12900
-let inactiveStates = ["canceled", "unpaid", "past_due"]
-
+const inactiveStates = ["canceled", "unpaid", "past_due"]
+const unpaidStates = ["unpaid", "past_due"]
+const mailchimpAudienceId = "c08320c799"
+const mailchimpTagName = "Expired Cards"
 
 mailchimp.setConfig({
   apiKey: process.env.FUNDYDESIGNER_MAILCHIMP_APIKEY,
-  server: "us-14"
+  server: "us14"
 })
 
 export class WebhookController {
@@ -238,6 +240,7 @@ export class WebhookController {
     let est_renew_amt = parseInt(subscription["product"]["price_in_cents"], 10) / 100
     let cc_info = subscription["credit_card"]
     let card_type = cc_info["card_type"];
+    let email = subscription["customer"]["email"].trim()
     let expiration_month = card_type == "paypal"
       ? 0
       : cc_info["expiration_month"]
@@ -245,8 +248,54 @@ export class WebhookController {
       ? 0
       : cc_info["expiration_year"]
 
-    const mailchimp_response = await mailchimp.ping.get();
-    console.log(mailchimp_response)
+    let currentYear = eventCreationDate.getUTCFullYear()
+    let currentMonth = eventCreationDate.getUTCMonth() + 1;
+    console.log("currentMonth: " + currentMonth);
+    console.log("expiration_month: " + expiration_month);
+    console.log("currentYear: " + currentYear);
+    console.log("expiration_year: " + expiration_year);
+
+    console.log("unpaidStates.includes(new_subscription_state): " + unpaidStates.includes(new_subscription_state));
+    console.log("expiration_year < currentYear: " + (expiration_year < currentYear));
+    console.log("(expiration_year == currentYear && expiration_month < currentMonth)): " + (expiration_year == currentYear && expiration_month < currentMonth));
+    console.log((expiration_year < currentYear) || (expiration_year == currentYear && expiration_month < currentMonth));
+
+
+
+    //If customer is in "unpaid" or "past_due" state and the credit card is expired, add the "Expired Card" tag in MailChimp
+    if (
+      unpaidStates.includes(new_subscription_state)
+      && ((expiration_year < currentYear) || (expiration_year == currentYear && expiration_month < currentMonth))
+    ) {
+      try {
+        console.log(email);
+
+        const response = await mailchimp.lists.updateListMemberTags(
+          mailchimpAudienceId,
+          email,
+          {tags: [{name: mailchimpTagName, status: "active"}]}
+        )
+      } catch (error) {
+        console.log(error)
+      }
+    }
+    //If customer transitions from "unpaid" or "past_due" to "active" they must have updated their credit card and paid so remove the "Expired Card" tag.
+    if (
+      unpaidStates.includes(previous_subscription_state)
+      && new_subscription_state == "active"
+    ) {
+      try {
+        const response = await mailchimp.lists.updateListMemberTags(
+          mailchimpAudienceId,
+          email,
+          {tags: [{name: mailchimpTagName, status: "inactive"}]}
+        )
+      } catch (error) {
+        console.log(error)
+      }
+    }
+    // const mailchimp_response = await mailchimp.ping.get();
+    // console.log(mailchimp_response)
     let next_assessment_at = new Date(subscription["current_period_ends_at"].trim())
     let balance = parseInt(subscription["balance_in_cents"], 10) / 100
     console.log("balance " + balance);
