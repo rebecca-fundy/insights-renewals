@@ -289,10 +289,11 @@ export class RevenueController {
       let kind = txn.kind
       let product_id = txn.product_id
       let isPayment = txn.type == "payment"
+      let type = txn.type
       let amount = isPayment
         ? txn.amount_in_cents / 100
         : -(txn.amount_in_cents) / 100
-      let productType = this.productService.getProductType(product_id, memo, kind, txn.amount_in_cents)
+      let productType = this.productService.getProductType(product_id, type, memo, kind, txn.amount_in_cents)
       let revenueType = this.productService.getRevenueType(productType)
       revenueReport.totalGross.total += amount
       revenueReport.totalNet.total += amount

@@ -10,7 +10,8 @@ const oldProoferIds: number[] = [27089, 27093, 27094, 3296637, 3761050]
 const saasProductTypes: string[] = ["monthLeaseRenewal", "yearLeaseRenewal", "peRenewal", "oldProofer"]
 const leaseProducts: string[] = ["monthLease", "yearLease", "monthLeaseRenewal", "yearLeaseRenewal"]
 const peOldCost = 17900;
-const peNewCost = 19900;
+const peNewCost = 0
+// const peNewCost = 19900;
 
 @injectable({scope: BindingScope.TRANSIENT})
 export class ProductTypeService {
@@ -53,9 +54,9 @@ export class ProductTypeService {
     return leaseProducts.includes(productType)
   }
 
-  getProductType(product_id: number, memo?: string, kind?: string, amount?: number): string {
+  getProductType(product_id: number, type?: string, memo?: string, kind?: string, amount?: number): string {
     let productType = "undetermined"
-    let isRenewal = memo?.toLowerCase().includes('renew')
+    let isRenewal = memo?.toLowerCase().includes('renew') || (type == "refund" && memo?.toLowerCase().includes('pro e'))
     let isReOptIn = kind?.includes("component_proration")
     if (isReOptIn) {
       productType = "reOptIn"
